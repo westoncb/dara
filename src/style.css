@@ -2,14 +2,37 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #333;
+    height: 100vh;
+    margin: 0;
+    background-color: #666;
+}
+
+.title {
+    position: absolute;
+    bottom: 0rem;
+    right: 0rem;
+    margin: 1rem;
+    font-size: 2.5rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: rgba(0,0,0,0.34)
+}
+
+a {
+    color: rgba(0,0,0,0.34);
+    text-decoration: none;
+}
+
+a:hover {
+    color: rgba(255, 255, 255,0.34);
 }
 
 #board {
     width: 1440px;
     height: 864px;
-    background: url("../assets/rust1.jpg");
+    background-image: url("../assets/grid-lines3.png");
+    background-color: #333;
     background-repeat: repeat;
+    box-shadow: 0 0 2rem rgba(0,0,0,0.5)
 }
 
 .spot {
@@ -18,4 +41,39 @@ body {
     background-repeat: no-repeat;
     width: 144px;
     height: 144px;
+    transition: all 150ms;
+    opacity: 0.5;
+    transform: translate(-50%, -50%);
+}
+
+/* .spot:hover {
+    opacity: 0.75;
+} */
+
+.piece {
+    position: absolute;
+    width: 85px;
+    height: 85px;
+    background-color: #d7d14c;
+    border-radius: 25px;
+    box-shadow: 0 0 1.5rem 1rem rgba(0,0,0,0.34);
+    perspective: 5rem;
+    perspective-origin: 150% 150%;
+    transform-style: preserve-3d;
+    transition-property: transform, background-color;
+    transition-duration: 500ms, 150ms;
+    transition-timing-function: ease-in-out;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+}
+
+.piece-p2 {
+    background-color: #4c97d1;
+}
+.piece-p2:hover {
+    background-color: #4cd7d1 !important;
+}
+
+.piece:hover {
+    background-color: #fffa95;
 }

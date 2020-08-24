@@ -1,0 +1,21 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #333;
+}
+
+#board {
+    width: 1440px;
+    height: 864px;
+    background: url("../assets/rust1.jpg");
+    background-repeat: repeat;
+}
+
+.spot {
+    position: absolute;
+    background: url("../assets/spot.png");
+    background-repeat: no-repeat;
+    width: 144px;
+    height: 144px;
+}

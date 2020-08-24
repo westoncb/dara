@@ -27,8 +27,8 @@ a:hover {
 }
 
 #board {
-    width: 1440px;
-    height: 864px;
+    width: 1000px;
+    height: 600px;
     background-image: url("../assets/grid-lines3.png");
     background-color: #333;
     background-repeat: repeat;
@@ -38,7 +38,7 @@ a:hover {
 .spot {
     position: absolute;
     background: url("../assets/spot.png");
-    background-repeat: no-repeat;
+    background-size: contain;
     width: 144px;
     height: 144px;
     transition: all 150ms;
@@ -52,11 +52,9 @@ a:hover {
 
 .piece {
     position: absolute;
-    width: 85px;
-    height: 85px;
     background-color: #d7d14c;
     border-radius: 25px;
-    box-shadow: 0 0 1.5rem 1rem rgba(0,0,0,0.34);
+    box-shadow: 0 0 1rem 0.5rem rgba(0,0,0,0.34);
     perspective: 5rem;
     perspective-origin: 150% 150%;
     transform-style: preserve-3d;

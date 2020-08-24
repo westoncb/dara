@@ -1,5 +1,4 @@
-
-const SPOT_SIZE = 144
+let SPOT_SIZE = 144
 const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
 
 class Board {
@@ -30,6 +29,9 @@ class Board {
 
     render(boardState) {
         const board = document.getElementById("board")
+
+        SPOT_SIZE = board.offsetHeight / 6
+
         board.innerHTML = ""
 
         this.renderSpots(board)
@@ -102,6 +104,8 @@ class Board {
         if (!piece) {
             piece = document.createElement("div")
             piece.className = `piece piece-add ${id > 12 ? "piece-p2" : ""}`
+            piece.style.width = SPOT_SIZE*0.75 + "px"
+            piece.style.height = SPOT_SIZE * 0.75 + "px"
             board.appendChild(piece)
         }
 
@@ -122,6 +126,8 @@ class Board {
         spot.className = "spot"
         spot.style.left = x + "px"
         spot.style.top = y + "px"
+        spot.style.width = SPOT_SIZE + "px"
+        spot.style.height = SPOT_SIZE + "px"
 
         return spot
     }

@@ -51,6 +51,12 @@ a:hover {
 } */
 
 .piece {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 3rem;
+    color: rgba(0, 0, 0, 0.1);
+    border: 2px solid rgba(0, 0, 0, 0.2);
     position: absolute;
     background-color: #d7d14c;
     border-radius: 25px;

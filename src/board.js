@@ -106,6 +106,7 @@ class Board {
             piece.className = `piece piece-add ${id > 12 ? "piece-p2" : ""}`
             piece.style.width = SPOT_SIZE*0.75 + "px"
             piece.style.height = SPOT_SIZE * 0.75 + "px"
+            piece.innerText = "|||"
             board.appendChild(piece)
         }
 

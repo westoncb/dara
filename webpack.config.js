@@ -1,5 +1,6 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
     entry: './src/index.js',
@@ -15,7 +16,7 @@ module.exports = {
                 use: {
                     loader: 'babel-loader',
                     options: {
-                        presets: ['@babel/preset-env']
+                        presets: ['@babel/preset-env', "@babel/preset-react"]
                     }
                 }
             },
@@ -40,9 +41,11 @@ module.exports = {
             file: "index.html",
             inject: "body"
         }),
+        new webpack.HotModuleReplacementPlugin(),
     ],
     devServer: {
         contentBase: './dist',
-        open: true
+        open: true,
+        hot: true
     }
 };

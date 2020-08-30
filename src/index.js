@@ -1,6 +1,9 @@
 import Game from "./game"
 import './style.css'
+import React from 'react'
+import ReactDOM from 'react-dom'
 
-window.onload = () => {
-    const game = new Game()
-}
+ReactDOM.render(<Game />, document.getElementById("app"))
+
+module.hot.accept();
+

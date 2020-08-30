@@ -1,171 +1,153 @@
-let SPOT_SIZE = 144
+import React from "react"
+import debounce from 'lodash.debounce'
+
 const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
 
-class Board {
-    constructor() {
-        window.onresize = () => {
-            this.render(this.lastBoardState)
-        }
-        
-        this.rand = []
-        for (let i = 0; i < 24; i++) {
-            this.rand[i] = Math.random()
-        }
+class Board extends React.Component {
 
-        // This works as an animation if you just use setInterval instead
-        setTimeout(() => {
-            const pieces = Array.from(document.getElementsByClassName('piece'))
-            pieces.forEach((piece, i) => {
-                const x = this.randRot(i, Math.random()*10000)
-                const y = this.randRot(23 - i, Math.random() * 10000)
-                piece.style.transform = `translate(-50%, -50%) rotateX(${x}deg) rotateY(${y}deg)`
-            })
-        }, 500)
+    constructor(props) {
+        super(props)
+
+        this.state = { boardWidth: 1, boardHeight: 1, centerStartX: 1, centerEndX: 1, spotSize: 1}
     }
 
-    randRot(i, time) {
-        return Math.sin((this.rand[i]) * 2 * time / 1000 + this.rand[i] * Math.PI) * 10
+    componentDidMount() {
+        const resizeFunc = () => {
+            const { width, height, centerStartX, centerEndX, centerGap } = this.getBoardDimensions()
+
+            this.setState({ 
+                boardWidth: width,
+                boardHeight: height,
+                centerStartX,
+                centerEndX,
+                spotSize: height / 6,
+                centerGap })
+        }
+        window.onresize = debounce(resizeFunc, 60)
+
+        resizeFunc()
     }
 
-    render(boardState) {
-        const board = document.getElementById("board")
+    getBoardDimensions() {
+        const app = document.getElementById("app")
 
-        SPOT_SIZE = board.offsetHeight / 6
+        // (vertical_pieces / horizontal_pieces) - 2.5% of width gap size between center and each side area
+        const aspectRatio = (6 / (6 + 4)) - 0.05
 
-        board.innerHTML = ""
+        const width = app.offsetWidth * 0.85
+        const noGapWidth = app.offsetWidth * 0.8
+        const height = width * aspectRatio
+        const gap = (width - noGapWidth) / 2
 
-        this.renderSpots(board)
-        // this.renderSideSpots(board)
-        this.renderPieces(boardState)
 
-        this.lastBoardState = boardState
+        const centerStartX = noGapWidth * (2 / 10) + gap
+        const centerEndX = centerStartX + noGapWidth * (6 / 10)
+
+        return {width, height, centerStartX, centerEndX, centerGap: gap}
+    }
+
+    render() {
+        const {width, height} = this.getBoardDimensions()
+
+        return (
+            <div id="board" style={{width: width+"px", height: height+"px"}}>
+                {this.renderPieces(this.props.boardState).concat(this.renderSpots())}
+            </div>
+        )
     }
 
     renderPieces(boardState) {
-        const board = document.getElementById("board")
+        const pieces = []
+
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                this.renderPieceAtSlot(i, j, sections.main, boardState, board)
+                pieces.push(this.renderPieceAtSlot(i, j, sections.main, boardState))
             }
         }
 
         for (let i = 0; i < 6; i++) {
             for (let j = 0; j < 2; j++) {
-                this.renderPieceAtSlot(i, j, sections.LEFT, boardState, board)
-                this.renderPieceAtSlot(i, j, sections.RIGHT, boardState, board)
+                pieces.push(this.renderPieceAtSlot(i, j, sections.LEFT, boardState))
+                pieces.push(this.renderPieceAtSlot(i, j, sections.RIGHT, boardState))
             }
         }
+
+        return pieces
     }
 
-    renderPieceAtSlot(row, col, section, boardState, board) {
-        let slotState = 0
+    renderSpots() {
+        const spots = []
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 6; j++) {
+                const { x, y } = this.getSpotPos(i, j)
+                const transformString = `translate(${x}px, ${y}px)`
+                spots.push((<div 
+                                key={i+","+j+"_spot"}
+                                className="spot"
+                                style={{transform: transformString, width: this.state.spotSize, height: this.state.spotSize}}
+                            ></div>))
+            }
+        }
+
+        return spots
+    }
+
+    renderPieceAtSlot(row, col, section, boardState) {
+        let id = 0
 
         switch (section) {
             case sections.MAIN:
-                slotState = boardState[row + "," + col]
+                id = boardState[row + "," + col]
                 break;
             case sections.LEFT:
-                slotState = boardState.lSide[row + "," + col]
+                id = boardState.lSide[row + "," + col]
                 break;
             case sections.RIGHT:
-                slotState = boardState.rSide[row + "," + col]
+                id = boardState.rSide[row + "," + col]
                 break;
         }
 
-        const piece = this.getPiece(slotState)
-
-        // console.log(slotState, piece)
-        
-        if (piece) {
+        if (id === 0)
+            return null
+        else {
             let pos
             switch (section) {
                 case sections.MAIN:
-                    pos = this.getSpotPos(board, row, col)
+                    pos = this.getSpotPos(row, col)
                     break;
                 case sections.LEFT:
-                    pos = this.getSideSpotPos(board, true, row, col)
+                    pos = this.getSideSpotPos(true, row, col)
                     break;
                 case sections.RIGHT:
-                    pos = this.getSideSpotPos(board, false, row, col)
+                    pos = this.getSideSpotPos(false, row, col)
                     break;
             }
 
-            piece.style.left = pos.x + "px"
-            piece.style.top = pos.y + "px"
+            const pieceMargin = this.state.spotSize * 0.25
+            const pieceSize = this.state.spotSize - pieceMargin
+            const transformString = `translate(${pos.x + pieceMargin/2}px, ${pos.y + pieceMargin/2}px)`
+
+            return (
+                <div key={id} className={"piece piece-add" + (id > 12 ? " piece-p2" : "")}
+                    style={{ width: pieceSize+"px", height: pieceSize+"px", transform: transformString }}>|||</div>
+            )
         }
     }
 
-    getPiece(id) {
-        if (id === 0)
-            return null
+    getSpotPos(row, col) {
+        const spotSize = this.state.spotSize
+        const x = this.state.centerStartX
+        const y = this.state.spotSize/2
 
-        let piece = document.getElementById(`piece-${id}`)
-
-        if (!piece) {
-            piece = document.createElement("div")
-            piece.className = `piece piece-add ${id > 12 ? "piece-p2" : ""}`
-            piece.style.width = SPOT_SIZE*0.75 + "px"
-            piece.style.height = SPOT_SIZE * 0.75 + "px"
-            piece.innerText = "|||"
-            board.appendChild(piece)
-        }
-
-        return piece
+        return { x: (x + col * spotSize), y: (y + row * spotSize) }
     }
 
-    renderSpots(board) {
-        for (let i = 0; i < 6; i++) {
-            for (let j = 0; j < 5; j++) {
-                board.appendChild(this.getSpot(board, j, i))
-            }
-        }
-    }
+    getSideSpotPos(leftSide, row, col) {
+        const spotSize = this.state.spotSize
+        const x = leftSide ? 0 : this.state.centerEndX + this.state.centerGap
+        const y = 0
 
-    getSpot(board, row, col) {
-        const spot = document.createElement("div")
-        const {x, y} = this.getSpotPos(board, row, col)
-        spot.className = "spot"
-        spot.style.left = x + "px"
-        spot.style.top = y + "px"
-        spot.style.width = SPOT_SIZE + "px"
-        spot.style.height = SPOT_SIZE + "px"
-
-        return spot
-    }
-
-    getSpotPos(board, row, col) {
-        const boardHeight = board.offsetHeight
-        const x = board.getBoundingClientRect().left + 2 * SPOT_SIZE
-        const y = board.getBoundingClientRect().top + (boardHeight - (5 * SPOT_SIZE)) / 2
-
-        return { x: (x + col * SPOT_SIZE + SPOT_SIZE / 2), y: (y + row * SPOT_SIZE + SPOT_SIZE / 2) }
-    }
-
-    renderSideSpots(board) {
-        for (let k = 0; k < 2; k++) {
-            for (let i = 0; i < 2; i++) {
-                for (let j = 0; j < 6; j++) {
-                    board.appendChild(this.getSideSpot(board, k==0, j, i))
-                }
-            }
-        }
-    }
-
-    getSideSpot(board, leftSide, row, col) {
-        const spot = document.createElement("div")
-        const {x, y} = this.getSideSpotPos(board, leftSide, row, col)
-        spot.className = "spot side-spot"
-        spot.style.left = x + "px"
-        spot.style.top = y + "px"
-
-        return spot
-    }
-
-    getSideSpotPos(board, leftSide, row, col) {
-        const x = leftSide ? board.getBoundingClientRect().left : (board.getBoundingClientRect().right - SPOT_SIZE * 2)
-        const y = board.getBoundingClientRect().top
-
-        return { x: (x + col * SPOT_SIZE + SPOT_SIZE/2), y: (y + row * SPOT_SIZE + SPOT_SIZE/2)}
+        return { x: (x + col * spotSize), y: (y + row * spotSize) }
     }
 }
 

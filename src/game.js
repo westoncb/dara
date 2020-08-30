@@ -1,15 +1,20 @@
 import Board from "./board"
+import React from 'react'
 
 const states = { INIT: 0, P1_DROP: 1, P2_DROP: 2, P1_MOVE: 3, P2_MOVE: 4, GAME_OVER: 4, ANIM: 5 }
 const players = { P1: 1, P2: 2 }
 
-class Game {
-    constructor() {
-        this.board = new Board()
+class Game extends React.Component {
+    constructor(props) {
+        super(props)
 
         this.reset()
+    }
 
-        this.board.render(this.boardState)
+    render() {
+        return (
+            <Board boardState={this.boardState}></Board>
+        )
     }
 
     reset() {
@@ -46,8 +51,6 @@ class Game {
                 board.rSide[i + "," + j] = 24 - (i*2 + j)
             }
         }
-
-        console.log("empty board", board)
 
         return board
     }

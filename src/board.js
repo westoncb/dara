@@ -1,6 +1,7 @@
 import React from "react"
 import debounce from 'lodash.debounce'
 import Announcer from "./Announcer"
+import Piece from "./Piece"
 
 const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
 
@@ -11,7 +12,7 @@ class Board extends React.Component {
     constructor(props) {
         super(props)
 
-        this.state = { boardWidth: 1, boardHeight: 1, centerStartX: 1, centerEndX: 1, spotSize: 1, announcement: ""}
+        this.state = { boardWidth: 1, boardHeight: 1, centerStartX: 1, centerEndX: 1, spotSize: 1, announcement: "", boardPos: {x: 1, y: 1}}
         this.boardRef = React.createRef()
     }
 
@@ -19,15 +20,17 @@ class Board extends React.Component {
         const resizeFunc = () => {
             const { width, height, centerStartX, centerEndX, centerGap } = this.getBoardDimensions()
 
+
             this.setState({ 
                 boardWidth: width,
                 boardHeight: height,
                 centerStartX,
                 centerEndX,
                 spotSize: height / 6,
-                centerGap })
+                centerGap,
+                boardPos: this.boardRef.current.getBoundingClientRect()})
         }
-        window.onresize = debounce(resizeFunc, 60)
+        window.onresize = debounce(resizeFunc.bind(this), 60)
 
         resizeFunc()
 
@@ -92,11 +95,12 @@ class Board extends React.Component {
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
                 const { x, y } = this.getSpotPos(i, j)
-                const transformString = `translate(${x}px, ${y}px)`
+                const margin = this.state.spotSize*0.15
+                const transformString = `translate(${x+margin/2}px, ${y+margin/2}px)`
                 spots.push((<div 
                                 key={i+","+j+"_spot"}
                                 className="spot"
-                                style={{transform: transformString, width: this.state.spotSize, height: this.state.spotSize}}
+                                style={{transform: transformString, width: this.state.spotSize - margin, height: this.state.spotSize - margin}}
                             ></div>))
             }
         }
@@ -137,11 +141,9 @@ class Board extends React.Component {
 
             const pieceMargin = this.state.spotSize * 0.25
             const pieceSize = this.state.spotSize - pieceMargin
-            const transformString = `translate(${pos.x + pieceMargin/2}px, ${pos.y + pieceMargin/2}px)`
 
             return (
-                <div key={id} className={"piece piece-add" + (id > 12 ? " piece-p2" : "")}
-                    style={{ width: pieceSize+"px", height: pieceSize+"px", transform: transformString }}>|||</div>
+                <Piece key={id} id={id} pos={pos} margin={pieceMargin} size={pieceSize} boardPos={this.state.boardPos}/>
             )
         }
     }

@@ -4,8 +4,8 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
-    background-color: #666;
-    overflow-x: hidden;
+    background-color: #787878;
+    overflow: hidden;
 }
 
 .title {
@@ -51,25 +51,33 @@ a:hover {
     background-image: url("../assets/grid-lines3.png");
     background-color: #333;
     background-repeat: repeat;
-    box-shadow: 0 0 2rem rgba(0,0,0,0.5)
+    box-shadow: 0 0 2rem rgba(0,0,0,0.5);
+    user-select: none;
 }
 
 .spot {
     position: absolute;
-    background: url("../assets/spot.png");
     background-size: contain;
     width: 144px;
     height: 144px;
     transition: all 150ms;
-    opacity: 0.5;
+    box-shadow: 0 0 0.5rem 0.1rem rgba(0,0,0,0.2);
+    background-color: #222;
+    border-radius: 40%;
 }
 
 .spot:hover {
     filter: drop-shadow(0px 0px 1rem #0f9);
-    /* transform: scale(1.25); */
+    z-index: 5;
 }
 
 .piece {
+    --scale-x: 1;
+    --scale-y: 1;
+    --translate-x: 0;
+    --translate-y: 0;
+    transform: translate(var(--translate-x), var(--translate-y)) scale(var(--scale-x), var(--scale-y));
+
     display: flex;
     justify-content: center;
     align-items: center;
@@ -78,15 +86,15 @@ a:hover {
     border: 2px solid rgba(0, 0, 0, 0.2);
     position: absolute;
     background-color: #d7d14c;
-    border-radius: 25px;
-    box-shadow: 0 0 1rem 0.5rem rgba(0,0,0,0.34);
-    perspective: 5rem;
-    perspective-origin: 150% 150%;
-    transform-style: preserve-3d;
-    transition-property: transform, background-color;
-    transition-duration: 500ms, 150ms;
+    border-radius: 25%;
+    box-shadow: 0 0 1rem 0.5rem rgba(0,0,0,0.25);
+    /* perspective: 5rem;
+    perspective-origin: 150% 150%; */
+    /* transform-style: preserve-3d; */
+    transition: all 150ms;
     transition-timing-function: ease-in-out;
     cursor: pointer;
+    z-index: 10;
 }
 
 .piece-p2 {
@@ -94,8 +102,23 @@ a:hover {
 }
 .piece-p2:hover {
     background-color: #4cd7d1 !important;
+    filter: drop-shadow(0px 0px 0.5rem #4cd7d1) !important;
 }
 
 .piece:hover {
     background-color: #fffa95;
+    --scale-x: 1.05;
+    --scale-y: 1.05;
+    filter: drop-shadow(0px 0px 0.5rem #fffa95);
+}
+
+.drag-surface {
+    position: absolute;
+    top: -100%;
+    left: -100%;
+    right: -100%;
+    bottom: -100%;
+
+    /* Just below z-index of .piece */
+    z-index: 9; 
 }

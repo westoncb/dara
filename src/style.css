@@ -14,8 +14,8 @@ body {
     right: 0rem;
     margin: 1rem;
     font-size: 2.5rem;
+    color: rgba(0,0,0,0.34);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    color: rgba(0,0,0,0.34)
 }
 
 .announcer-text {
@@ -120,4 +120,25 @@ a:hover {
 
     /* Just below z-index of .piece */
     z-index: 9; 
+}
+
+.text-highlight {
+    color: #ec71ff;
+}
+
+.player-text {
+    position: relative;
+    font-size: 1.5rem;
+    transform: translateY(-100%);
+    font-family: 'Permanent Marker', cursive;
+    white-space: nowrap;
+}
+
+.p1-text {
+    float: left;
+}
+
+.p2-text {
+    transform: translate(0, -100%);
+    float: right;
 }

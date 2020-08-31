@@ -1,12 +1,15 @@
 import React, {useState, useRef} from "react"
 
-function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppedFunc, pieceDraggedFunc}) {
+function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppedFunc, pieceDraggedFunc, pieceCanBeLifted}) {
 
     const [pickedUp, setPickedUp] = useState(false)
     const [offset, setOffset] = useState({x: 0, y: 0})
     const refContainer = useRef(null)
 
     const handleMouseDown = e => {
+        if (!pieceCanBeLifted(id))
+            return
+
         setPickedUp(true)
         piecePickedUpFunc(id)
 

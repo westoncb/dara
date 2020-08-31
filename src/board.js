@@ -2,9 +2,10 @@ import React from "react"
 import debounce from 'lodash.debounce'
 import Announcer from "./Announcer"
 import Piece from "./Piece"
+import PlayerText from "./PlayerText"
 
 const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
-const gameStates = { INIT: 0, P1_DROP: 1, P2_DROP: 2, P1_MOVE: 3, P2_MOVE: 4, GAME_OVER: 4, ANIM: 5 }
+const gameStates = { DROP: 0, MOVE: 1 }
 const players = { P1: 1, P2: 2 }
 const messages = {gameStart: "Game Start!", dropPhase: "Drop phase", movePhase: "Move phase"}
 
@@ -21,10 +22,10 @@ class Board extends React.Component {
             centerEndX: 1,
             spotSize: 1,
             announcement: "",
-            boardPos: {x: 1, y: 1},
+            boardBounds: {x: 1, y: 1, width: 1, height: 1},
             pickedUpPiece: null,
-            gameState: gameStates.P1_DROP,
-            playerTurn: players.P1,
+            gameState: gameStates.DROP,
+            activePlayer: players.P1,
             selectedBoardPos: {row: -1, col: -1}}
 
         this.boardRef = React.createRef()
@@ -42,7 +43,7 @@ class Board extends React.Component {
                 centerEndX,
                 spotSize: height / 6,
                 centerGap,
-                boardPos: this.boardRef.current.getBoundingClientRect()})
+                boardBounds: this.boardRef.current.getBoundingClientRect()})
         }
         window.onresize = debounce(resizeFunc.bind(this), 60)
 
@@ -80,6 +81,8 @@ class Board extends React.Component {
         return (
             <div ref={this.boardRef} id="board" style={{width: width+"px", height: height+"px"}}>
                 <Announcer text={this.state.announcement} xPos={announcementXPos} swipeOut={this.state.announcement === messages.gameStart}/>
+                <PlayerText text={"Player 1"} isPlayer1 highlight={this.state.activePlayer === players.P1} />
+                <PlayerText text={"Player 2"} highlight={this.state.activePlayer === players.P2} boardRightX={this.state.boardBounds.x + this.state.boardBounds.width}/>
                 {this.renderPieces().concat(this.renderSpots())}
             </div>
         )
@@ -93,11 +96,15 @@ class Board extends React.Component {
         this.setState({ pickedUpPiece: null })
         const { row, col } = this.state.selectedBoardPos
 
-        if (this.isMoveLegal(row, col, id, this.state.playerTurn)) {
+        if (this.isMoveLegal(row, col, id, this.state.activePlayer)) {
             const oldPos = this.findPositionWithPiece(id)
             const updatedState = this.setSpotState(oldPos.row, oldPos.col, 0, oldPos.section)
             
             this.setSpotState(row, col, id, sections.main, updatedState)
+
+            this.setState(state => {
+                return { activePlayer: state.activePlayer === players.P1 ? players.P2 : players.P1 }
+            })
         }
     }
 
@@ -204,7 +211,7 @@ class Board extends React.Component {
                 let filterStr = ""
 
                 if (this.state.pickedUpPiece) {
-                    if (this.isMoveLegal(i, j, this.state.pickedUpPiece, this.state.playerTurn)) {
+                    if (this.isMoveLegal(i, j, this.state.pickedUpPiece, this.state.activePlayer)) {
                         if (i === this.state.selectedBoardPos.row &&
                             j === this.state.selectedBoardPos.col) {
                             filterStr = "drop-shadow(0px 0px 1rem #0f9)"
@@ -256,12 +263,32 @@ class Board extends React.Component {
                     pos={pos}
                     margin={pieceMargin}
                     size={pieceSize}
-                    boardPos={this.state.boardPos}
+                    boardPos={this.state.boardBounds}
                     pieceDroppedFunc={this.pieceDropped.bind(this)}
                     piecePickedUpFunc={this.piecePickedUp.bind(this)}
-                    pieceDraggedFunc={this.pieceDragged.bind(this)}/>
+                    pieceDraggedFunc={this.pieceDragged.bind(this)}
+                    pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}/>
             )
         }
+    }
+
+    pieceCanBeLifted(id) {
+        if (this.state.gameState === gameStates.DROP) {
+            return this.pieceBelongsToActivePlayer(id) && !this.pieceIsOnMainSection(id)
+        }
+    }
+
+    pieceBelongsToActivePlayer(id) {
+        if (this.state.activePlayer === players.P1 && id < 13)
+            return true
+        if (this.state.activePlayer === players.P2 && id > 12)
+            return true
+
+        return false
+    }
+
+    pieceIsOnMainSection(id) {
+        return Object.values(this.state.boardState).includes(id)
     }
 
     getSpotPos(row, col) {

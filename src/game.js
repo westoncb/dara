@@ -1,5 +1,5 @@
-import Board from "./board"
 import React from 'react'
+import Board from "./board"
 
 const states = { INIT: 0, P1_DROP: 1, P2_DROP: 2, P1_MOVE: 3, P2_MOVE: 4, GAME_OVER: 4, ANIM: 5 }
 const players = { P1: 1, P2: 2 }

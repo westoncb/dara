@@ -5,6 +5,7 @@ body {
     height: 100vh;
     margin: 0;
     background-color: #666;
+    overflow-x: hidden;
 }
 
 .title {
@@ -15,6 +16,17 @@ body {
     font-size: 2.5rem;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: rgba(0,0,0,0.34)
+}
+
+.announcer-text {
+    font-family: 'Permanent Marker', cursive;
+    font-size: 4rem;
+    color: #ec71ff;
+    position: absolute;
+    top: 0;
+    transform: translate(-50%, -120%);
+    transition: all 200ms;
+    opacity: 0;
 }
 
 a {
@@ -35,6 +47,7 @@ a:hover {
 }
 
 #board {
+    position: relative;
     background-image: url("../assets/grid-lines3.png");
     background-color: #333;
     background-repeat: repeat;
@@ -49,6 +62,11 @@ a:hover {
     height: 144px;
     transition: all 150ms;
     opacity: 0.5;
+}
+
+.spot:hover {
+    filter: drop-shadow(0px 0px 1rem #0f9);
+    /* transform: scale(1.25); */
 }
 
 .piece {

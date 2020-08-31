@@ -1,14 +1,18 @@
 import React from "react"
 import debounce from 'lodash.debounce'
+import Announcer from "./Announcer"
 
 const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
+
+const messages = {gameStart: "Game Start!", dropPhase: "Drop phase", movePhase: "Move phase"}
 
 class Board extends React.Component {
 
     constructor(props) {
         super(props)
 
-        this.state = { boardWidth: 1, boardHeight: 1, centerStartX: 1, centerEndX: 1, spotSize: 1}
+        this.state = { boardWidth: 1, boardHeight: 1, centerStartX: 1, centerEndX: 1, spotSize: 1, announcement: ""}
+        this.boardRef = React.createRef()
     }
 
     componentDidMount() {
@@ -26,6 +30,12 @@ class Board extends React.Component {
         window.onresize = debounce(resizeFunc, 60)
 
         resizeFunc()
+
+        this.setState({announcement: messages.gameStart})
+
+        setTimeout(() => {
+            this.setState({ announcement: messages.dropPhase })
+        }, 1750)
     }
 
     getBoardDimensions() {
@@ -48,9 +58,11 @@ class Board extends React.Component {
 
     render() {
         const {width, height} = this.getBoardDimensions()
+        const announcementXPos = this.boardRef.current ? this.boardRef.current.offsetWidth / 2 : 0
 
         return (
-            <div id="board" style={{width: width+"px", height: height+"px"}}>
+            <div ref={this.boardRef} id="board" style={{width: width+"px", height: height+"px"}}>
+                <Announcer text={this.state.announcement} xPos={announcementXPos} swipeOut={this.state.announcement === messages.gameStart}/>
                 {this.renderPieces(this.props.boardState).concat(this.renderSpots())}
             </div>
         )

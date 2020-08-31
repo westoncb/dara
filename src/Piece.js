@@ -1,10 +1,9 @@
-import React, {useState, useRef, useEffect} from "react"
+import React, {useState, useRef} from "react"
 
 function Piece({id, size, pos, margin, boardPos}) {
 
     const [mouseDown, setMouseDown] = useState(false)
     const [offset, setOffset] = useState({x: 0, y: 0})
-    const [dragPos, setDragPos] = useState(null)
     const refContainer = useRef(null)
 
     const handleMouseDown = e => {
@@ -20,22 +19,25 @@ function Piece({id, size, pos, margin, boardPos}) {
 
     const handleMouseMove = e => {
         if (mouseDown) {
-            setDragPos({x: e.pageX - offset.x, y: e.pageY - offset.y})
+            const element = refContainer.current
+            const x = e.pageX - offset.x - boardPos.x
+            const y = e.pageY - offset.y - boardPos.y
+            element.style.setProperty("--translate-x", x + "px")
+            element.style.setProperty("--translate-y", y + "px")
         }
     }
 
     const drop = () => {
         setMouseDown(false)
-        setDragPos(null)
         if (refContainer.current) {
             refContainer.current.style.zIndex = "10"
         }   
     }
 
-    if (refContainer.current) {
+    if (!mouseDown && refContainer.current) {
         const element = refContainer.current
-        const x = dragPos ? dragPos.x - boardPos.x: pos.x + margin / 2
-        const y = dragPos ? dragPos.y - boardPos.y: pos.y + margin / 2
+        const x = pos.x + margin / 2
+        const y = pos.y + margin / 2
         element.style.setProperty("--translate-x", x + "px")
         element.style.setProperty("--translate-y", y + "px")
     }

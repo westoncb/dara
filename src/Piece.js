@@ -1,13 +1,14 @@
 import React, {useState, useRef} from "react"
 
-function Piece({id, size, pos, margin, boardPos}) {
+function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppedFunc, pieceDraggedFunc}) {
 
-    const [mouseDown, setMouseDown] = useState(false)
+    const [pickedUp, setPickedUp] = useState(false)
     const [offset, setOffset] = useState({x: 0, y: 0})
     const refContainer = useRef(null)
 
     const handleMouseDown = e => {
-        setMouseDown(true)
+        setPickedUp(true)
+        piecePickedUpFunc(id)
 
         if (refContainer.current) {
             refContainer.current.style.zIndex = "11"
@@ -18,23 +19,27 @@ function Piece({id, size, pos, margin, boardPos}) {
     }
 
     const handleMouseMove = e => {
-        if (mouseDown) {
+        if (pickedUp) {
             const element = refContainer.current
             const x = e.pageX - offset.x - boardPos.x
             const y = e.pageY - offset.y - boardPos.y
             element.style.setProperty("--translate-x", x + "px")
             element.style.setProperty("--translate-y", y + "px")
+
+            pieceDraggedFunc(id, x, y)
         }
     }
 
     const drop = () => {
-        setMouseDown(false)
+        setPickedUp(false)
+        pieceDroppedFunc(id)
+
         if (refContainer.current) {
             refContainer.current.style.zIndex = "10"
         }   
     }
 
-    if (!mouseDown && refContainer.current) {
+    if (!pickedUp && refContainer.current) {
         const element = refContainer.current
         const x = pos.x + margin / 2
         const y = pos.y + margin / 2
@@ -46,16 +51,16 @@ function Piece({id, size, pos, margin, boardPos}) {
         <>
             <div 
             ref={refContainer}
-            key={id} 
+            key={id}
             className={"piece piece-add" + (id > 12 ? " piece-p2" : "")}
-            style={{ width: size + "px", height: size + "px", transition: !mouseDown ? "all 150ms" : "none" }}
+            style={{ width: size + "px", height: size + "px", transition: !pickedUp ? "all 150ms" : "none" }}
             onMouseDown={handleMouseDown}
             onMouseUp={drop}
             onMouseMove={handleMouseMove}
         >
             |||   
         </div>
-            {mouseDown && <div className="drag-surface" onMouseMove={handleMouseMove} onMouseUp={drop}></div> }
+            {pickedUp && <div className="drag-surface" onMouseMove={handleMouseMove} onMouseUp={drop}></div> }
         </>
     )
 }

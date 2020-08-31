@@ -4,7 +4,8 @@ import Announcer from "./Announcer"
 import Piece from "./Piece"
 
 const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
-
+const gameStates = { INIT: 0, P1_DROP: 1, P2_DROP: 2, P1_MOVE: 3, P2_MOVE: 4, GAME_OVER: 4, ANIM: 5 }
+const players = { P1: 1, P2: 2 }
 const messages = {gameStart: "Game Start!", dropPhase: "Drop phase", movePhase: "Move phase"}
 
 class Board extends React.Component {
@@ -12,7 +13,20 @@ class Board extends React.Component {
     constructor(props) {
         super(props)
 
-        this.state = { boardWidth: 1, boardHeight: 1, centerStartX: 1, centerEndX: 1, spotSize: 1, announcement: "", boardPos: {x: 1, y: 1}}
+        this.state = { 
+            boardState: this.getEmptyBoard(),
+            boardWidth: 1,
+            boardHeight: 1,
+            centerStartX: 1,
+            centerEndX: 1,
+            spotSize: 1,
+            announcement: "",
+            boardPos: {x: 1, y: 1},
+            pickedUpPiece: null,
+            gameState: gameStates.P1_DROP,
+            playerTurn: players.P1,
+            selectedBoardPos: {row: -1, col: -1}}
+
         this.boardRef = React.createRef()
     }
 
@@ -66,24 +80,109 @@ class Board extends React.Component {
         return (
             <div ref={this.boardRef} id="board" style={{width: width+"px", height: height+"px"}}>
                 <Announcer text={this.state.announcement} xPos={announcementXPos} swipeOut={this.state.announcement === messages.gameStart}/>
-                {this.renderPieces(this.props.boardState).concat(this.renderSpots())}
+                {this.renderPieces().concat(this.renderSpots())}
             </div>
         )
     }
 
-    renderPieces(boardState) {
+    piecePickedUp(id) {
+        this.setState({pickedUpPiece: id })
+    }
+
+    pieceDropped(id) {
+        this.setState({ pickedUpPiece: null })
+        const { row, col } = this.state.selectedBoardPos
+
+        if (this.isMoveLegal(row, col, id, this.state.playerTurn)) {
+            const oldPos = this.findPositionWithPiece(id)
+            const updatedState = this.setSpotState(oldPos.row, oldPos.col, 0, oldPos.section)
+            
+            this.setSpotState(row, col, id, sections.main, updatedState)
+        }
+    }
+
+    pieceDragged(id, mouseX, mouseY) {
+        const { row, col } = this.getSpotRowColForXY(mouseX + this.state.spotSize / 2, mouseY + this.state.spotSize / 2)
+
+        if (row !== this.state.selectedBoardPos.row ||
+            col !== this.state.selectedBoardPos.col) {
+                this.setState({selectedBoardPos: {row, col}})
+            }
+    }
+
+    findPositionWithPiece(id) {
+        const lSideCandidate = Object.keys(this.state.boardState.lSide).find(key => this.state.boardState.lSide[key] === id)
+        const rSideCandidate = Object.keys(this.state.boardState.rSide).find(key => this.state.boardState.rSide[key] === id)
+        const mainCandidate = Object.keys(this.state.boardState).find(key => this.state.boardState[key] === id)
+
+        let section
+        let key
+        if (lSideCandidate) {
+            section = sections.LEFT
+            key = lSideCandidate
+        } else if (rSideCandidate) {
+            section = sections.RIGHT
+            key = rSideCandidate
+        } else {
+            section = sections.MAIN
+            key = mainCandidate
+        }
+
+        const parts = key.split(",")
+
+        return { row: Number(parts[0]), col: Number(parts[1]), section}
+    }
+
+    isMoveLegal(row, col, pieceId, player) {
+        const spotState = this.getSpotState(row, col)
+        const isSpotOccupied = spotState !== 0
+
+        return !isSpotOccupied
+    }
+
+    getSpotState(row, col, section = sections.MAIN) {
+        switch (section) {
+            case sections.MAIN:
+                return this.state.boardState[row + "," + col]
+            case sections.LEFT:
+                return this.state.boardState.lSide[row + "," + col]
+            case sections.RIGHT:
+                return this.state.boardState.rSide[row + "," + col]
+        }
+    }
+
+    setSpotState(row, col, state, section = sections.MAIN, boardState = this.state.boardState) {
+        let newState
+        switch (section) {
+            case sections.MAIN:
+                newState = { ...boardState, [row + "," + col]: state }
+                break;
+            case sections.LEFT:
+                newState = { ...boardState, lSide: { ...boardState.lSide, [row + "," + col]: state } }
+                break;
+            case sections.RIGHT:
+                newState = { ...boardState, rSide: { ...boardState.rSide, [row + "," + col]: state } }
+                break;
+        }
+
+        this.setState({ boardState: newState})
+
+        return newState
+    }
+
+    renderPieces() {
         const pieces = []
 
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                pieces.push(this.renderPieceAtSlot(i, j, sections.main, boardState))
+                pieces.push(this.renderPieceAtSlot(i, j, sections.MAIN))
             }
         }
 
         for (let i = 0; i < 6; i++) {
             for (let j = 0; j < 2; j++) {
-                pieces.push(this.renderPieceAtSlot(i, j, sections.LEFT, boardState))
-                pieces.push(this.renderPieceAtSlot(i, j, sections.RIGHT, boardState))
+                pieces.push(this.renderPieceAtSlot(i, j, sections.LEFT))
+                pieces.push(this.renderPieceAtSlot(i, j, sections.RIGHT))
             }
         }
 
@@ -97,10 +196,30 @@ class Board extends React.Component {
                 const { x, y } = this.getSpotPos(i, j)
                 const margin = this.state.spotSize*0.15
                 const transformString = `translate(${x+margin/2}px, ${y+margin/2}px)`
+
+                let bgColor = "#222"
+
+                
+
+                let filterStr = ""
+
+                if (this.state.pickedUpPiece) {
+                    if (this.isMoveLegal(i, j, this.state.pickedUpPiece, this.state.playerTurn)) {
+                        if (i === this.state.selectedBoardPos.row &&
+                            j === this.state.selectedBoardPos.col) {
+                            filterStr = "drop-shadow(0px 0px 1rem #0f9)"
+                        }
+                    }
+                }
+
                 spots.push((<div 
                                 key={i+","+j+"_spot"}
                                 className="spot"
-                                style={{transform: transformString, width: this.state.spotSize - margin, height: this.state.spotSize - margin}}
+                                style={{backgroundColor: bgColor,
+                                        transform: transformString,
+                                        width: this.state.spotSize - margin,
+                                        height: this.state.spotSize - margin,
+                                        filter: filterStr}}
                             ></div>))
             }
         }
@@ -108,20 +227,8 @@ class Board extends React.Component {
         return spots
     }
 
-    renderPieceAtSlot(row, col, section, boardState) {
-        let id = 0
-
-        switch (section) {
-            case sections.MAIN:
-                id = boardState[row + "," + col]
-                break;
-            case sections.LEFT:
-                id = boardState.lSide[row + "," + col]
-                break;
-            case sections.RIGHT:
-                id = boardState.rSide[row + "," + col]
-                break;
-        }
+    renderPieceAtSlot(row, col, section) {
+        let id = this.getSpotState(row, col, section)
 
         if (id === 0)
             return null
@@ -143,7 +250,16 @@ class Board extends React.Component {
             const pieceSize = this.state.spotSize - pieceMargin
 
             return (
-                <Piece key={id} id={id} pos={pos} margin={pieceMargin} size={pieceSize} boardPos={this.state.boardPos}/>
+                <Piece 
+                    key={id}
+                    id={id}
+                    pos={pos}
+                    margin={pieceMargin}
+                    size={pieceSize}
+                    boardPos={this.state.boardPos}
+                    pieceDroppedFunc={this.pieceDropped.bind(this)}
+                    piecePickedUpFunc={this.piecePickedUp.bind(this)}
+                    pieceDraggedFunc={this.pieceDragged.bind(this)}/>
             )
         }
     }
@@ -156,12 +272,45 @@ class Board extends React.Component {
         return { x: (x + col * spotSize), y: (y + row * spotSize) }
     }
 
+    getSpotRowColForXY(x, y) {
+        const spotSize = this.state.spotSize
+
+        x -= this.state.centerStartX
+        y -= spotSize/2
+
+        const col = Math.floor(x / spotSize)
+        const row = Math.floor(y / spotSize)
+
+        return {row, col}
+    }
+
     getSideSpotPos(leftSide, row, col) {
         const spotSize = this.state.spotSize
         const x = leftSide ? 0 : this.state.centerEndX + this.state.centerGap
         const y = 0
 
         return { x: (x + col * spotSize), y: (y + row * spotSize) }
+    }
+
+    getEmptyBoard() {
+        const board = {}
+        for (let i = 0; i < 5; i++) {
+            for (let j = 0; j < 6; j++) {
+                board[i + "," + j] = 0
+            }
+        }
+
+        board.lSide = {}
+        board.rSide = {}
+
+        for (let i = 0; i < 6; i++) {
+            for (let j = 0; j < 2; j++) {
+                board.lSide[i + "," + j] = 1 + i * 2 + j
+                board.rSide[i + "," + j] = 24 - (i * 2 + j)
+            }
+        }
+
+        return board
     }
 }
 

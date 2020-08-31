@@ -67,7 +67,6 @@ a:hover {
 }
 
 .spot:hover {
-    filter: drop-shadow(0px 0px 1rem #0f9);
     z-index: 5;
 }
 

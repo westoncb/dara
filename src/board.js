@@ -4,17 +4,17 @@ import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 
-const sections = {MAIN: 0, LEFT: 1, RIGHT: 2}
+const sections = { MAIN: 0, LEFT: 1, RIGHT: 2 }
 const gameStates = { DROP: 0, MOVE: 1 }
 const players = { P1: 1, P2: 2 }
-const messages = {gameStart: "Game Start!", dropPhase: "Drop phase", movePhase: "Move phase"}
+const messages = { gameStart: "Game Start!", dropPhase: "Drop phase", movePhase: "Move phase" }
 
 class Board extends React.Component {
 
     constructor(props) {
         super(props)
 
-        this.state = { 
+        this.state = {
             boardState: this.getEmptyBoard(),
             boardWidth: 1,
             boardHeight: 1,
@@ -22,34 +22,38 @@ class Board extends React.Component {
             centerEndX: 1,
             spotSize: 1,
             announcement: "",
-            boardBounds: {x: 1, y: 1, width: 1, height: 1},
+            boardBounds: { x: 1, y: 1, width: 1, height: 1 },
             pickedUpPiece: null,
             gameState: gameStates.DROP,
             activePlayer: players.P1,
-            selectedBoardPos: {row: -1, col: -1}}
+            selectedBoardPos: { row: -1, col: -1 }
+        }
 
         this.boardRef = React.createRef()
     }
 
+    onResize = () => {
+        const { width, height, centerStartX, centerEndX, centerGap } = this.getBoardDimensions()
+
+
+        this.setState({
+            boardWidth: width,
+            boardHeight: height,
+            centerStartX,
+            centerEndX,
+            spotSize: height / 6,
+            centerGap,
+            boardBounds: this.boardRef.current.getBoundingClientRect()
+        })
+    }
+
     componentDidMount() {
-        const resizeFunc = () => {
-            const { width, height, centerStartX, centerEndX, centerGap } = this.getBoardDimensions()
 
+        window.onresize = debounce(this.onResize, 60)
 
-            this.setState({ 
-                boardWidth: width,
-                boardHeight: height,
-                centerStartX,
-                centerEndX,
-                spotSize: height / 6,
-                centerGap,
-                boardBounds: this.boardRef.current.getBoundingClientRect()})
-        }
-        window.onresize = debounce(resizeFunc.bind(this), 60)
+        this.onResize()
 
-        resizeFunc()
-
-        this.setState({announcement: messages.gameStart})
+        this.setState({ announcement: messages.gameStart })
 
         setTimeout(() => {
             this.setState({ announcement: messages.dropPhase })
@@ -71,25 +75,25 @@ class Board extends React.Component {
         const centerStartX = noGapWidth * (2 / 10) + gap
         const centerEndX = centerStartX + noGapWidth * (6 / 10)
 
-        return {width, height, centerStartX, centerEndX, centerGap: gap}
+        return { width, height, centerStartX, centerEndX, centerGap: gap }
     }
 
     render() {
-        const {width, height} = this.getBoardDimensions()
+        const { width, height } = this.getBoardDimensions()
         const announcementXPos = this.boardRef.current ? this.boardRef.current.offsetWidth / 2 : 0
 
         return (
-            <div ref={this.boardRef} id="board" style={{width: width+"px", height: height+"px"}}>
-                <Announcer text={this.state.announcement} xPos={announcementXPos} swipeOut={this.state.announcement === messages.gameStart}/>
+            <div ref={this.boardRef} id="board" style={{ width: width + "px", height: height + "px" }}>
+                <Announcer text={this.state.announcement} xPos={announcementXPos} swipeOut={this.state.announcement === messages.gameStart} />
                 <PlayerText text={"Player 1"} isPlayer1 highlight={this.state.activePlayer === players.P1} />
-                <PlayerText text={"Player 2"} highlight={this.state.activePlayer === players.P2} boardRightX={this.state.boardBounds.x + this.state.boardBounds.width}/>
+                <PlayerText text={"Player 2"} highlight={this.state.activePlayer === players.P2} boardRightX={this.state.boardBounds.x + this.state.boardBounds.width} />
                 {this.renderPieces().concat(this.renderSpots())}
             </div>
         )
     }
 
     piecePickedUp(id) {
-        this.setState({pickedUpPiece: id })
+        this.setState({ pickedUpPiece: id })
     }
 
     pieceDropped(id) {
@@ -99,7 +103,7 @@ class Board extends React.Component {
         if (this.isMoveLegal(row, col, id, this.state.activePlayer)) {
             const oldPos = this.findPositionWithPiece(id)
             const updatedState = this.setSpotState(oldPos.row, oldPos.col, 0, oldPos.section)
-            
+
             this.setSpotState(row, col, id, sections.main, updatedState)
 
             this.setState(state => {
@@ -113,8 +117,8 @@ class Board extends React.Component {
 
         if (row !== this.state.selectedBoardPos.row ||
             col !== this.state.selectedBoardPos.col) {
-                this.setState({selectedBoardPos: {row, col}})
-            }
+            this.setState({ selectedBoardPos: { row, col } })
+        }
     }
 
     findPositionWithPiece(id) {
@@ -137,7 +141,7 @@ class Board extends React.Component {
 
         const parts = key.split(",")
 
-        return { row: Number(parts[0]), col: Number(parts[1]), section}
+        return { row: Number(parts[0]), col: Number(parts[1]), section }
     }
 
     isMoveLegal(row, col, pieceId, player) {
@@ -172,7 +176,7 @@ class Board extends React.Component {
                 break;
         }
 
-        this.setState({ boardState: newState})
+        this.setState({ boardState: newState })
 
         return newState
     }
@@ -201,12 +205,12 @@ class Board extends React.Component {
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
                 const { x, y } = this.getSpotPos(i, j)
-                const margin = this.state.spotSize*0.15
-                const transformString = `translate(${x+margin/2}px, ${y+margin/2}px)`
+                const margin = this.state.spotSize * 0.15
+                const transformString = `translate(${x + margin / 2}px, ${y + margin / 2}px)`
 
                 let bgColor = "#222"
 
-                
+
 
                 let filterStr = ""
 
@@ -219,15 +223,17 @@ class Board extends React.Component {
                     }
                 }
 
-                spots.push((<div 
-                                key={i+","+j+"_spot"}
-                                className="spot"
-                                style={{backgroundColor: bgColor,
-                                        transform: transformString,
-                                        width: this.state.spotSize - margin,
-                                        height: this.state.spotSize - margin,
-                                        filter: filterStr}}
-                            ></div>))
+                spots.push((<div
+                    key={i + "," + j + "_spot"}
+                    className="spot"
+                    style={{
+                        backgroundColor: bgColor,
+                        transform: transformString,
+                        width: this.state.spotSize - margin,
+                        height: this.state.spotSize - margin,
+                        filter: filterStr
+                    }}
+                ></div>))
             }
         }
 
@@ -257,7 +263,7 @@ class Board extends React.Component {
             const pieceSize = this.state.spotSize - pieceMargin
 
             return (
-                <Piece 
+                <Piece
                     key={id}
                     id={id}
                     pos={pos}
@@ -267,7 +273,8 @@ class Board extends React.Component {
                     pieceDroppedFunc={this.pieceDropped.bind(this)}
                     piecePickedUpFunc={this.piecePickedUp.bind(this)}
                     pieceDraggedFunc={this.pieceDragged.bind(this)}
-                    pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}/>
+                    pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}
+                />
             )
         }
     }
@@ -294,7 +301,7 @@ class Board extends React.Component {
     getSpotPos(row, col) {
         const spotSize = this.state.spotSize
         const x = this.state.centerStartX
-        const y = this.state.spotSize/2
+        const y = this.state.spotSize / 2
 
         return { x: (x + col * spotSize), y: (y + row * spotSize) }
     }
@@ -303,12 +310,12 @@ class Board extends React.Component {
         const spotSize = this.state.spotSize
 
         x -= this.state.centerStartX
-        y -= spotSize/2
+        y -= spotSize / 2
 
         const col = Math.floor(x / spotSize)
         const row = Math.floor(y / spotSize)
 
-        return {row, col}
+        return { row, col }
     }
 
     getSideSpotPos(leftSide, row, col) {

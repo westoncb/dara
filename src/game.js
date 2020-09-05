@@ -15,12 +15,12 @@ class Game extends React.Component {
     }
 
     reset() {
-        
+
     }
 
-    
 
-    
+
+
 }
 
 export default Game

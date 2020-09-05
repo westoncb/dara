@@ -1,12 +1,12 @@
-import React, {useState} from "react"
+import React, { useState } from "react"
 
-function PlayerText({text, highlight, isPlayer1}) {
+function PlayerText({ text, highlight, isPlayer1 }) {
     const [ai, setAI] = useState(!isPlayer1)
 
     return (
-        <div 
+        <div
             className={"player-text " + (isPlayer1 ? "p1-text" : "p2-text") + (highlight ? " text-highlight" : "")}
-            >
+        >
             {text}
 
             {/* <div style={{ display: "flex", flexDirection: "row", justifyContent: "flex-start", alignItems: "center" }}>

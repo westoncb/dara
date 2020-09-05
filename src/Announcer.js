@@ -1,6 +1,6 @@
-import React, {useRef, useEffect} from "react"
+import React, { useRef, useEffect } from "react"
 
-function Announcer({text, xPos, swipeOut}) {
+function Announcer({ text, xPos, swipeOut }) {
 
     const textRef = useRef(null)
 
@@ -28,7 +28,7 @@ function Announcer({text, xPos, swipeOut}) {
     }, [text, xPos, swipeOut, textRef.current])
 
     return (
-        <span ref={textRef} className="announcer-text" style={{left: xPos+"px"}}>{text}</span>
+        <span ref={textRef} className="announcer-text" style={{ left: xPos + "px" }}>{text}</span>
     )
 }
 

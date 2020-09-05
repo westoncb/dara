@@ -1,9 +1,9 @@
-import React, {useState, useRef} from "react"
+import React, { useState, useRef } from "react"
 
-function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppedFunc, pieceDraggedFunc, pieceCanBeLifted}) {
+function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppedFunc, pieceDraggedFunc, pieceCanBeLifted }) {
 
     const [pickedUp, setPickedUp] = useState(false)
-    const [offset, setOffset] = useState({x: 0, y: 0})
+    const [offset, setOffset] = useState({ x: 0, y: 0 })
     const refContainer = useRef(null)
 
     const handleMouseDown = e => {
@@ -39,7 +39,7 @@ function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppe
 
         if (refContainer.current) {
             refContainer.current.style.zIndex = "10"
-        }   
+        }
     }
 
     if (!pickedUp && refContainer.current) {
@@ -52,18 +52,18 @@ function Piece({ id, size, pos, margin, boardPos, piecePickedUpFunc, pieceDroppe
 
     return (
         <>
-            <div 
-            ref={refContainer}
-            key={id}
-            className={"piece piece-add" + (id > 12 ? " piece-p2" : "")}
-            style={{ width: size + "px", height: size + "px", transition: !pickedUp ? "all 150ms" : "none" }}
-            onMouseDown={handleMouseDown}
-            onMouseUp={drop}
-            onMouseMove={handleMouseMove}
-        >
-            |||   
+            <div
+                ref={refContainer}
+                key={id}
+                className={"piece piece-add" + (id > 12 ? " piece-p2" : "")}
+                style={{ width: size + "px", height: size + "px", transition: !pickedUp ? "all 150ms" : "none" }}
+                onMouseDown={handleMouseDown}
+                onMouseUp={drop}
+                onMouseMove={handleMouseMove}
+            >
+                |||
         </div>
-            {pickedUp && <div className="drag-surface" onMouseMove={handleMouseMove} onMouseUp={drop}></div> }
+            {pickedUp && <div className="drag-surface" onMouseMove={handleMouseMove} onMouseUp={drop}></div>}
         </>
     )
 }

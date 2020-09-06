@@ -34,18 +34,17 @@ function Announcer({
         }
     }, [text, xPos, swipeOut, textRef.current])
 
-    return ( <
-        span ref = {
-            textRef
-        }
-        className = "announcer-text"
-        style = {
+    return (<span ref={
+        textRef
+    }
+        className="announcer-text"
+        style={
             {
                 left: xPos + "px"
             }
         } > {
             text
-        } < /span>
+        } </span>
     )
 }
 

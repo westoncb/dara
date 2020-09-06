@@ -5,19 +5,18 @@ function PlayerText({ text, highlight, isPlayer1 }) {
 
     return (
         <div
-            className={"player-text " + (isPlayer1 ? "p1-text" : "p2-text") + (highlight ? " text-highlight" : "")}
+            className={"player-text-container " + (isPlayer1 ? "p1-text" : "p2-text")}
         >
-            {text}
+            <div className={(highlight ? " text-highlight" : "")}>
+                {text}
+            </div>
 
-            {/* <div style={{ display: "flex", flexDirection: "row", justifyContent: "flex-start", alignItems: "center" }}>
-                <label className="ai-label">A.I.</label>
-                <input 
-                    type="checkbox"
-                    className="ios-switch tinyswitch"
-                    checked={ai}
-                    onChange={e => setAI(!ai)} />
-                <div><div></div></div>
-            </div> */}
+            <div className="toggle-container">
+                <span className="ai-label">A.I.</span>
+                <input type="checkbox" id={"cb" + (isPlayer1 ? "p1" : "p2")} className="tgl tgl-ios" />
+                <label className="tgl-btn" htmlFor={"cb" + (isPlayer1 ? "p1" : "p2")}></label>
+
+            </div>
         </div>
     )
 }

@@ -1,5 +1,5 @@
 import Game from "./game"
-import './style.css'
+import './style.scss'
 import React from 'react'
 import ReactDOM from 'react-dom'
 

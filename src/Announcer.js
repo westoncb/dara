@@ -22,7 +22,7 @@ function Announcer({
             textRef.current.style.textShadow = "#ec71ff 1px 0 10px"
 
             setTimeout(() => {
-                textRef.current.style.color = "rgba(255, 255, 255, 0.29)"
+                textRef.current.style.color = "rgba(0, 0, 0, 0.18)"
                 textRef.current.style.fontSize = "2.5rem"
                 textRef.current.style.textShadow = ""
 

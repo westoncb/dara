@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react"
 import Board from "./board"
 
 class Game extends React.Component {
@@ -9,18 +9,10 @@ class Game extends React.Component {
     }
 
     render() {
-        return (
-            <Board></Board>
-        )
+        return <Board></Board>
     }
 
-    reset() {
-
-    }
-
-
-
-
+    reset() {}
 }
 
 export default Game

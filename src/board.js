@@ -63,6 +63,7 @@ class Board extends React.Component {
             p2AI: false,
             aiMakingMove: false,
             aiSelection: { row: -1, col: -1 },
+            nextPlayer: players.P1,
         }
 
         this.boardRef = React.createRef()
@@ -88,6 +89,9 @@ class Board extends React.Component {
             destSection
         )
 
+        // Having to do it this weird way since
+        // React doesn't batch updates unless they originate
+        // from lifecycle methods
         this.setState(updatedState)
     }
 
@@ -135,6 +139,7 @@ class Board extends React.Component {
         ) {
             if (
                 !this.state.aiMakingMove &&
+                this.state.nextPlayer === this.state.activePlayer &&
                 ((this.state.activePlayer === players.P1 && this.state.p1AI) ||
                     (this.state.activePlayer === players.P2 && this.state.p2AI))
             ) {
@@ -144,9 +149,18 @@ class Board extends React.Component {
     }
 
     aiTurnWithDuration() {
+        const { pieceId, row, col } = this.getAIMove()
+        this.setState((state) => {
+            return {
+                aiMakingMove: true,
+                aiSelection: { row, col },
+                nextPlayer:
+                    state.activePlayer === players.P1 ? players.P2 : players.P1,
+            }
+        })
+
         setTimeout(() => {
-            this.aiMove()
-            this.setState({ aiMakingMove: true })
+            this.movePieceTo(row, col, pieceId)
 
             setTimeout(() => {
                 this.setState({ aiMakingMove: false })
@@ -157,7 +171,7 @@ class Board extends React.Component {
         }, AI_MOVE_DELAY)
     }
 
-    aiMove() {
+    getAIMove() {
         if (this.state.gameState === gameStates.DROP) {
             const pieceId = this.findUnplayedPiece(this.state.activePlayer)
             const validMoves = Object.keys(this.state.boardState.main).filter(
@@ -175,8 +189,8 @@ class Board extends React.Component {
             const [row, col] = this.coordsFromKey(
                 validMoves[Math.floor(Math.random() * (validMoves.length - 1))]
             )
-            this.setState({ aiSelection: { row, col } })
-            this.movePieceTo(row, col, pieceId)
+
+            return { pieceId, row, col }
         }
     }
 
@@ -591,8 +605,8 @@ class Board extends React.Component {
                     drawAIHand={
                         this.state.aiSelection.row === row &&
                         this.state.aiSelection.col === col &&
-                        section === sections.MAIN &&
-                        this.state.aiMakingMove
+                        this.state.aiMakingMove &&
+                        section === sections.MAIN // This is going to be an issue for showing the AI hand over side pieces before moving
                     }
                 />
             )

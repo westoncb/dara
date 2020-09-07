@@ -4,6 +4,10 @@ import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 
+const AI_MOVE_DELAY = 1200
+const AI_ANIM_TIME = 1000
+const AI_HAND_FADE_TIME = 300
+
 const sections = {
     MAIN: 0,
     LEFT: 1,
@@ -55,6 +59,10 @@ class Board extends React.Component {
                 row: -1,
                 col: -1,
             },
+            p1AI: false,
+            p2AI: false,
+            aiMakingMove: false,
+            aiSelection: { row: -1, col: -1 },
         }
 
         this.boardRef = React.createRef()
@@ -63,13 +71,24 @@ class Board extends React.Component {
     movePieceTo(newRow, newCol, pieceId, destSection = sections.MAIN) {
         const oldLocation = this.findLocationWithPiece(pieceId)
 
-        this.setSpotState(
+        let updatedState = this.setSpotState(
             oldLocation.row,
             oldLocation.col,
             0,
+            true,
+            this.state,
             oldLocation.section
         )
-        this.setSpotState(newRow, newCol, pieceId, destSection)
+        updatedState = this.setSpotState(
+            newRow,
+            newCol,
+            pieceId,
+            true,
+            updatedState,
+            destSection
+        )
+
+        this.setState(updatedState)
     }
 
     onResize = () => {
@@ -106,39 +125,67 @@ class Board extends React.Component {
                 announcement: messages.dropPhase,
             })
         }, 1750)
-
-        // this.play()
     }
 
-    async play() {
-        const timedMove = () => {
-            return new Promise((resolve, reject) => {
-                this.makeMove()
-
-                setTimeout(() => {
-                    resolve()
-                }, 2000)
-            })
-        }
-
-        while (true) {
-            await timedMove()
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        if (
+            prevState.activePlayer !== this.state.activePlayer ||
+            prevState.p1AI !== this.state.p1AI ||
+            prevState.p2AI !== this.state.p2AI
+        ) {
+            if (
+                !this.state.aiMakingMove &&
+                ((this.state.activePlayer === players.P1 && this.state.p1AI) ||
+                    (this.state.activePlayer === players.P2 && this.state.p2AI))
+            ) {
+                this.aiTurnWithDuration()
+            }
         }
     }
 
-    makeMove() {
+    aiTurnWithDuration() {
+        setTimeout(() => {
+            this.aiMove()
+            this.setState({ aiMakingMove: true })
+
+            setTimeout(() => {
+                this.setState({ aiMakingMove: false })
+            }, AI_ANIM_TIME)
+            setTimeout(() => {
+                this.finishTurn()
+            }, AI_ANIM_TIME + AI_HAND_FADE_TIME)
+        }, AI_MOVE_DELAY)
+    }
+
+    aiMove() {
         if (this.state.gameState === gameStates.DROP) {
-            // find piece from own side
-            // do: choose random board location; while: !selectedLocationValid()
+            const pieceId = this.findUnplayedPiece(this.state.activePlayer)
+            const validMoves = Object.keys(this.state.boardState.main).filter(
+                (boardLoc) => {
+                    const [row, col] = this.coordsFromKey(boardLoc)
+                    return this.isMoveLegal(
+                        row,
+                        col,
+                        pieceId,
+                        this.state.activePlayer
+                    )
+                }
+            )
 
-            const piece = this.findUnplayedPiece(this.state.activePlayer)
+            const [row, col] = this.coordsFromKey(
+                validMoves[Math.floor(Math.random() * (validMoves.length - 1))]
+            )
+            this.setState({ aiSelection: { row, col } })
+            this.movePieceTo(row, col, pieceId)
         }
+    }
 
-        console.log("made move")
+    coordsFromKey(key) {
+        return key.split(",").map((s) => Number(s))
     }
 
     sectionStateToID(sectionState) {
-        if (sectionState === this.state.boardState) return sections.MAIN
+        if (sectionState === this.state.boardState.main) return sections.MAIN
         if (sectionState === this.state.boardState.lSide) return sections.LEFT
         if (sectionState === this.state.boardState.rSide) return sections.RIGHT
     }
@@ -149,7 +196,7 @@ class Board extends React.Component {
                 ? this.state.boardState.lSide
                 : this.state.boardState.rSide
 
-        return sideState.find((spotState) => spotState !== 0)
+        return Object.values(sideState).find((spotState) => spotState !== 0)
     }
 
     getBoardDimensions() {
@@ -199,6 +246,13 @@ class Board extends React.Component {
                     text={"Player 1"}
                     isPlayer1
                     highlight={this.state.activePlayer === players.P1}
+                    setUseAI={(useAI) => {
+                        this.setState((state) => {
+                            return {
+                                p1AI: useAI,
+                            }
+                        })
+                    }}
                 />{" "}
                 <PlayerText
                     text={"Player 2"}
@@ -206,6 +260,13 @@ class Board extends React.Component {
                     boardRightX={
                         this.state.boardBounds.x + this.state.boardBounds.width
                     }
+                    setUseAI={(useAI) => {
+                        this.setState((state) => {
+                            return {
+                                p2AI: useAI,
+                            }
+                        })
+                    }}
                 />{" "}
                 {this.renderPieces().concat(this.renderSpots())}{" "}
             </div>
@@ -261,7 +322,7 @@ class Board extends React.Component {
 
     findLocationWithPiece(pieceId) {
         return [
-            this.state.boardState,
+            this.state.boardState.main,
             this.state.boardState.lSide,
             this.state.boardState.rSide,
         ]
@@ -273,8 +334,8 @@ class Board extends React.Component {
                 return resultKey !== undefined
                     ? {
                           section: this.sectionStateToID(sectionState),
-                          row: resultKey.split(",")[0],
-                          col: resultKey.split(",")[1],
+                          row: this.coordsFromKey(resultKey)[0],
+                          col: this.coordsFromKey(resultKey)[1],
                       }
                     : null
             })
@@ -284,9 +345,14 @@ class Board extends React.Component {
     isMoveLegal(row, col, pieceId, player) {
         const spotState = this.getSpotState(row, col)
         const isSpotOccupied = spotState !== 0
-        const makes3InARow = this.moveMakes3InARow(row, col, player)
 
-        return !isSpotOccupied && !makes3InARow
+        if (this.state.gameState === gameStates.DROP) {
+            const makes3InARow = this.moveMakes3InARow(row, col, player)
+
+            return !isSpotOccupied && !makes3InARow
+        } else if (this.state.gameState === gameState.MOVE) {
+            return !isSpotOccupied
+        }
     }
 
     moveMakes3InARow(row, col, player) {
@@ -295,13 +361,14 @@ class Board extends React.Component {
             directions.DOWN,
             directions.LEFT,
             directions.RIGHT,
-        ]
-            .map((direction) =>
-                this.chainLengthInDirection(player, row, col, direction)
-            )
-            .sort((a, b) => b - a) // descending order
+        ].map((direction) =>
+            this.chainLengthInDirection(player, row, col, direction)
+        )
 
-        if (chainLengths[0] > 1) {
+        if (
+            chainLengths[0] + chainLengths[1] > 1 ||
+            chainLengths[2] + chainLengths[3] > 1
+        ) {
             return true
         } else {
             return false
@@ -343,8 +410,6 @@ class Board extends React.Component {
                 ? 1
                 : 0
 
-        // console.log("RADDER, COLADDER", rowAdder, colAdder)
-
         const neighborRow = row + rowAdder
         const neighborCol = col + colAdder
         return {
@@ -357,7 +422,7 @@ class Board extends React.Component {
     getSpotState(row, col, section = sections.MAIN) {
         switch (section) {
             case sections.MAIN:
-                return this.state.boardState[row + "," + col]
+                return this.state.boardState.main[row + "," + col]
             case sections.LEFT:
                 return this.state.boardState.lSide[row + "," + col]
             case sections.RIGHT:
@@ -365,8 +430,15 @@ class Board extends React.Component {
         }
     }
 
-    setSpotState(row, col, spotState, section = sections.MAIN) {
-        this.setState((state) => {
+    setSpotState(
+        row,
+        col,
+        spotState,
+        defer = false,
+        lastState = this.state,
+        section = sections.MAIN
+    ) {
+        const newStateFunc = (state) => {
             const boardState = state.boardState
             let newState
 
@@ -374,7 +446,10 @@ class Board extends React.Component {
                 case sections.MAIN:
                     newState = {
                         ...boardState,
-                        [row + "," + col]: spotState,
+                        main: {
+                            ...boardState.main,
+                            [row + "," + col]: spotState,
+                        },
                     }
                     break
                 case sections.LEFT:
@@ -398,7 +473,13 @@ class Board extends React.Component {
             }
 
             return { boardState: newState }
-        })
+        }
+
+        if (defer) {
+            return newStateFunc(lastState)
+        } else {
+            this.setState(newStateFunc)
+        }
     }
 
     renderPieces() {
@@ -436,22 +517,21 @@ class Board extends React.Component {
 
                 if (this.state.pickedUpPiece) {
                     if (
-                        this.isMoveLegal(
+                        i === this.state.selectedBoardPos.row &&
+                        j === this.state.selectedBoardPos.col
+                    ) {
+                        const legal = this.isMoveLegal(
                             i,
                             j,
                             this.state.pickedUpPiece,
                             this.state.activePlayer
                         )
-                    ) {
-                        if (
-                            i === this.state.selectedBoardPos.row &&
-                            j === this.state.selectedBoardPos.col
-                        ) {
-                            filterStr = this.state.effects
-                                ? "drop-shadow(0px 0px 1rem #0f9)"
-                                : ""
-                            bgColor = "#4e504e"
-                        }
+                        filterStr = this.state.effects
+                            ? `drop-shadow(0px 0px 0.75rem ${
+                                  legal ? "#0f9" : "#f01"
+                              })`
+                            : ""
+                        bgColor = "#4e504e"
                     }
                 }
 
@@ -475,10 +555,11 @@ class Board extends React.Component {
     }
 
     renderPieceAtSlot(row, col, section) {
-        let id = this.getSpotState(row, col, section)
+        let spotState = this.getSpotState(row, col, section)
 
-        if (id === 0) return null
+        if (spotState === 0) return null
         else {
+            const id = spotState
             let pos
             switch (section) {
                 case sections.MAIN:
@@ -507,6 +588,12 @@ class Board extends React.Component {
                     piecePickedUpFunc={this.piecePickedUp.bind(this)}
                     pieceDraggedFunc={this.pieceDragged.bind(this)}
                     pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}
+                    drawAIHand={
+                        this.state.aiSelection.row === row &&
+                        this.state.aiSelection.col === col &&
+                        section === sections.MAIN &&
+                        this.state.aiMakingMove
+                    }
                 />
             )
         }
@@ -531,7 +618,7 @@ class Board extends React.Component {
     }
 
     pieceIsOnMainSection(id) {
-        return Object.values(this.state.boardState).includes(id)
+        return Object.values(this.state.boardState.main).includes(id)
     }
 
     getSpotPos(row, col) {
@@ -572,15 +659,12 @@ class Board extends React.Component {
     }
 
     getEmptyBoard() {
-        const board = {}
+        const board = { main: {}, lSide: {}, rSide: {} }
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                board[i + "," + j] = 0
+                board.main[i + "," + j] = 0
             }
         }
-
-        board.lSide = {}
-        board.rSide = {}
 
         for (let i = 0; i < 6; i++) {
             for (let j = 0; j < 2; j++) {

@@ -292,6 +292,9 @@ class Board extends React.Component {
             return {
                 activePlayer:
                     state.activePlayer === players.P1 ? players.P2 : players.P1,
+                // This is only here for dealing with AI turns
+                nextPlayer:
+                    state.activePlayer === players.P1 ? players.P2 : players.P1,
             }
         })
     }

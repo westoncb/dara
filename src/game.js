@@ -4,7 +4,6 @@ import Board from "./board"
 class Game extends React.Component {
     constructor(props) {
         super(props)
-
         this.reset()
     }
 

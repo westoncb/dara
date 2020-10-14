@@ -220,11 +220,17 @@ class Board extends React.Component {
         const app = document.getElementById("app")
 
         // (vertical_pieces / horizontal_pieces) - 2.5% of width gap size between center and each side area
-        const aspectRatio = 1 / (6 / (6 + 4) - 0.05)
+        const aspectRatio = 6 / (6 + 4) - 0.05
 
-        const height = app.offsetHeight * 0.75
-        const width = height * aspectRatio
-        const noGapWidth = app.offsetHeight * 0.7 * aspectRatio
+        let width = app.offsetWidth * 0.85
+        let noGapWidth = app.offsetWidth * 0.8
+        let height = width * aspectRatio
+
+        if (height > app.offsetHeight * 0.6) {
+            height = app.offsetHeight * 0.6
+            width = height / aspectRatio
+            noGapWidth = height / (aspectRatio + 0.05)
+        }
 
         const gap = (width - noGapWidth) / 2
 

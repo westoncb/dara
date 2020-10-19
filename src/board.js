@@ -172,33 +172,75 @@ class Board extends React.Component {
     }
 
     getAIMove() {
-        if (this.state.gameState === gameStates.DROP) {
-            const pieceId = this.findUnplayedPiece(this.state.activePlayer)
-            const validMovesForPiece = Object.keys(
-                this.state.boardState.main
-            ).filter(boardLoc => {
-                const [row, col] = this.coordsFromKey(boardLoc)
-                return this.isMoveLegal(
-                    row,
-                    col,
-                    pieceId,
-                    this.state.activePlayer
-                )
-            })
+        const player = this.state.activePlayer
 
-            const [row, col] = this.coordsFromKey(
-                validMovesForPiece[
-                    Math.floor(Math.random() * (validMovesForPiece.length - 1))
-                ]
-            )
+        if (this.state.gameState === gameStates.DROP) {
+            const pieceId = this.findUnplayedPiece(player)
+            const legalMoves = this.getLegalMoves(player, -1, -1)
+
+            const [row, col] = legalMoves[
+                Math.floor(Math.random() * (legalMoves.length - 1))
+            ]
 
             return { pieceId, row, col }
         } else if (this.state.gameState === gameStates.MOVE) {
+            const playerPieces = this.getPlayerPieces(player)
+
+            const scoredMoves = playerPieces.reduce((allMoves, pieceId) => {
+                const location = this.findLocationWithPiece(pieceId)
+                const lastRow = location.row
+                const lastCol = location.col
+
+                const movesForPiece = this.getLegalMoves(
+                    player,
+                    lastRow,
+                    lastCol
+                )
+
+                return allMoves.concat(
+                    movesForPiece.map(move => ({
+                        pieceId,
+                        lastCoords: [lastRow, lastCol],
+                        row: move[0],
+                        col: move[1],
+                        score: this.scoreCandidateMove(
+                            move[0],
+                            move[1],
+                            player,
+                            lastRow,
+                            lastCol
+                        ),
+                    }))
+                )
+            }, [])
+
+            scoredMoves.sort((move1, move2) => {
+                return move2.score - move1.score
+            })
+
+            const topMoves = scoredMoves.filter(move => {
+                const scoreDiff = move.score - scoredMoves[0].score
+
+                console.assert(
+                    scoreDiff <= 0,
+                    "Something went wrong: highest score was not first element."
+                )
+
+                return scoreDiff === 0
+            })
+
+            const randIndex = Math.floor(Math.random() * (topMoves.length - 1))
+
+            return topMoves[randIndex]
         }
     }
 
     coordsFromKey(key) {
         return key.split(",").map(s => Number(s))
+    }
+
+    coordsToKey(row, col) {
+        return row + "," + col
     }
 
     sectionStateToID(sectionState) {
@@ -214,6 +256,24 @@ class Board extends React.Component {
                 : this.state.boardState.rSide
 
         return Object.values(sideState).find(spotState => spotState !== 0)
+    }
+
+    getPlayerPieces(player) {
+        const boardState = this.state.boardState
+        const spots = Object.values(boardState.lSide)
+            .concat(Object.values(boardState.rSide))
+            .concat(Object.values(boardState.main))
+
+        return spots.filter(
+            spotState =>
+                spotState !== 0 && this.pieceOwner(spotState) === player
+        )
+    }
+
+    getFreeSpaces() {
+        return Object.keys(this.state.boardState.main).filter(boardLoc => {
+            this.state.boardState.main[boardLoc] === 0
+        })
     }
 
     getBoardDimensions() {
@@ -391,7 +451,16 @@ class Board extends React.Component {
             .find(result => result !== null)
     }
 
-    isMoveLegal(row, col, pieceId, player) {
+    getLegalMoves(player, lastRow = -1, lastCol = -1) {
+        return Object.keys(this.state.boardState.main)
+            .map(key => this.coordsFromKey(key))
+            .filter(coords => {
+                const [row, col] = coords
+                return this.isMoveLegal(row, col, player, lastRow, lastCol)
+            })
+    }
+
+    isMoveLegal(row, col, player, lastRow, lastCol) {
         const spotState = this.getSpotState(row, col)
         const isSpotOccupied = spotState !== 0
 
@@ -399,12 +468,35 @@ class Board extends React.Component {
             const makes3InARow = this.moveMakes3InARow(row, col, player)
 
             return !isSpotOccupied && !makes3InARow
-        } else if (this.state.gameState === gameState.MOVE) {
-            return !isSpotOccupied
+        } else if (this.state.gameState === gameStates.MOVE) {
+            return (
+                !isSpotOccupied && this.areNeighbors(lastRow, lastCol, row, col)
+            )
         }
     }
 
-    moveMakes3InARow(row, col, player) {
+    scoreCandidateMove(row, col, player, lastRow, lastCol) {
+        if (this.state.gameState === gameStates.DROP) {
+            return 1
+        } else if (this.state.gameState === gameStates.MOVE) {
+            return this.moveMakes3InARow(row, col, player, lastRow, lastCol)
+                ? 1
+                : 0
+        } else {
+            return -5
+        }
+    }
+
+    moveMakes3InARow(row, col, player, lastRow, lastCol) {
+        const pieceAlreadyOnBoard = lastRow !== undefined
+        const pieceId = pieceAlreadyOnBoard
+            ? this.state.boardState.main[this.coordsToKey(lastRow, lastCol)]
+            : -1
+
+        // clear piece from its previous location
+        if (pieceAlreadyOnBoard)
+            this.state.boardState.main[this.coordsToKey(lastRow, lastCol)] = -1
+
         const chainLengths = [
             directions.UP,
             directions.DOWN,
@@ -413,6 +505,12 @@ class Board extends React.Component {
         ].map(direction =>
             this.chainLengthInDirection(player, row, col, direction)
         )
+
+        // restore piece to its previous location
+        if (pieceAlreadyOnBoard)
+            this.state.boardState.main[
+                this.coordsToKey(lastRow, lastCol)
+            ] = pieceId
 
         if (
             chainLengths[0] + chainLengths[1] > 1 ||
@@ -466,6 +564,10 @@ class Board extends React.Component {
             col: neighborCol,
             state: this.getSpotState(neighborRow, neighborCol),
         }
+    }
+
+    areNeighbors(row1, col1, row2, col2) {
+        return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1
     }
 
     getSpotState(row, col, section = sections.MAIN) {

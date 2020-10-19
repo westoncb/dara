@@ -397,14 +397,30 @@ class Board extends React.Component {
         })
     }
 
-    pieceDropped(id) {
+    pieceDropped(pieceId) {
         this.setState({
             pickedUpPiece: null,
         })
         const { row, col } = this.state.selectedBoardPos
+        let lastRow = -1
+        let lastCol = -1
 
-        if (this.isMoveLegal(row, col, id, this.state.activePlayer)) {
-            this.movePieceTo(row, col, id)
+        if (this.state.gameState === gameStates.MOVE) {
+            const oldLocation = this.findLocationWithPiece(pieceId)
+            lastRow = oldLocation.row
+            lastCol = oldLocation.col
+        }
+
+        if (
+            this.isMoveLegal(
+                row,
+                col,
+                this.state.activePlayer,
+                lastRow,
+                lastCol
+            )
+        ) {
+            this.movePieceTo(row, col, pieceId)
 
             this.finishTurn()
         }
@@ -671,11 +687,15 @@ class Board extends React.Component {
                         i === this.state.selectedBoardPos.row &&
                         j === this.state.selectedBoardPos.col
                     ) {
+                        const location = this.findLocationWithPiece(
+                            this.state.pickedUpPiece
+                        )
                         const legal = this.isMoveLegal(
                             i,
                             j,
-                            this.state.pickedUpPiece,
-                            this.state.activePlayer
+                            this.state.activePlayer,
+                            location.row,
+                            location.col
                         )
                         filterStr = this.state.effects
                             ? `drop-shadow(0px 0px 0.75rem ${
@@ -756,6 +776,8 @@ class Board extends React.Component {
                 this.pieceBelongsToActivePlayer(id) &&
                 !this.pieceIsOnMainSection(id)
             )
+        } else if (this.state.gameState === gameStates.MOVE) {
+            return this.pieceBelongsToActivePlayer(id)
         }
     }
 

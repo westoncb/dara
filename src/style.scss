@@ -79,7 +79,7 @@ a:hover {
 
 .spot {
     position: absolute;
-    transition: all 150ms;
+    transition: transform 150ms;
     box-shadow: 0 0 0.5rem 0.1rem rgba(0, 0, 0, 0.2);
     border-radius: 40%;
 }

@@ -94,8 +94,6 @@ class Board extends React.Component {
             destSection
         )
 
-        dirtyPiece = newRow + "," + newCol
-
         // Having to do it this weird way since
         // React doesn't batch updates unless they originate
         // from lifecycle methods

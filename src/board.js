@@ -37,8 +37,6 @@ const messages = {
     movePhase: "Move phase",
 }
 
-let dirtyPiece = -1
-
 class Board extends React.Component {
     constructor(props) {
         super(props)

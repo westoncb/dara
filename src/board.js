@@ -4,9 +4,13 @@ import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 
-const AI_MOVE_DELAY = 1200
-const AI_ANIM_TIME = 1000
-const AI_HAND_FADE_TIME = 300
+const showDebugState = false
+const fastForwardAI = true
+
+const AI_MOVE_DELAY = gameState =>
+    gameState === gameStates.DROP && fastForwardAI ? 50 : 1200
+const AI_ANIM_TIME = gameState =>
+    gameState === gameStates.DROP && fastForwardAI ? 100 : 1000
 
 const sections = {
     MAIN: 0,
@@ -32,6 +36,8 @@ const messages = {
     dropPhase: "Drop phase",
     movePhase: "Move phase",
 }
+
+let dirtyPiece = -1
 
 class Board extends React.Component {
     constructor(props) {
@@ -59,14 +65,15 @@ class Board extends React.Component {
                 row: -1,
                 col: -1,
             },
-            p1AI: false,
-            p2AI: false,
+            p1AI: true,
+            p2AI: true,
             aiMakingMove: false,
             aiSelection: { row: -1, col: -1 },
             nextPlayer: players.P1,
         }
 
         this.boardRef = React.createRef()
+        this.canvasRef = React.createRef()
     }
 
     movePieceTo(newRow, newCol, pieceId, destSection = sections.MAIN) {
@@ -89,6 +96,8 @@ class Board extends React.Component {
             destSection
         )
 
+        dirtyPiece = newRow + "," + newCol
+
         // Having to do it this weird way since
         // React doesn't batch updates unless they originate
         // from lifecycle methods
@@ -96,13 +105,8 @@ class Board extends React.Component {
     }
 
     onResize = () => {
-        const {
-            width,
-            height,
-            centerStartX,
-            centerEndX,
-            centerGap,
-        } = this.getBoardDimensions()
+        const { width, height, centerStartX, centerEndX, centerGap } =
+            this.getBoardDimensions()
 
         this.setState({
             boardWidth: width,
@@ -132,19 +136,15 @@ class Board extends React.Component {
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
+        const state = this.state
+
         if (
-            prevState.activePlayer !== this.state.activePlayer ||
-            prevState.p1AI !== this.state.p1AI ||
-            prevState.p2AI !== this.state.p2AI
+            !state.aiMakingMove &&
+            state.nextPlayer === state.activePlayer &&
+            ((state.activePlayer === players.P1 && state.p1AI) ||
+                (state.activePlayer === players.P2 && state.p2AI))
         ) {
-            if (
-                !this.state.aiMakingMove &&
-                this.state.nextPlayer === this.state.activePlayer &&
-                ((this.state.activePlayer === players.P1 && this.state.p1AI) ||
-                    (this.state.activePlayer === players.P2 && this.state.p2AI))
-            ) {
-                this.aiTurnWithDuration()
-            }
+            this.aiTurnWithDuration()
         }
     }
 
@@ -164,11 +164,10 @@ class Board extends React.Component {
 
             setTimeout(() => {
                 this.setState({ aiMakingMove: false })
-            }, AI_ANIM_TIME)
-            setTimeout(() => {
+
                 this.finishTurn()
-            }, AI_ANIM_TIME + AI_HAND_FADE_TIME)
-        }, AI_MOVE_DELAY)
+            }, AI_ANIM_TIME(this.state.gameState))
+        }, AI_MOVE_DELAY(this.state.gameState))
     }
 
     getAIMove() {
@@ -178,9 +177,8 @@ class Board extends React.Component {
             const pieceId = this.findUnplayedPiece(player)
             const legalMoves = this.getLegalMoves(player, -1, -1)
 
-            const [row, col] = legalMoves[
-                Math.floor(Math.random() * (legalMoves.length - 1))
-            ]
+            const [row, col] =
+                legalMoves[Math.floor(Math.random() * (legalMoves.length - 1))]
 
             return { pieceId, row, col }
         } else if (this.state.gameState === gameStates.MOVE) {
@@ -352,7 +350,7 @@ class Board extends React.Component {
                         })
                     }}
                 />{" "}
-                {this.renderPieces().concat(this.renderSpots())}{" "}
+                {this.renderPieces().concat(this.renderSpots())}
             </div>
         )
     }
@@ -421,7 +419,6 @@ class Board extends React.Component {
             )
         ) {
             this.movePieceTo(row, col, pieceId)
-
             this.finishTurn()
         }
     }
@@ -524,9 +521,8 @@ class Board extends React.Component {
 
         // restore piece to its previous location
         if (pieceAlreadyOnBoard)
-            this.state.boardState.main[
-                this.coordsToKey(lastRow, lastCol)
-            ] = pieceId
+            this.state.boardState.main[this.coordsToKey(lastRow, lastCol)] =
+                pieceId
 
         if (
             chainLengths[0] + chainLengths[1] > 1 ||
@@ -650,29 +646,37 @@ class Board extends React.Component {
     }
 
     renderPieces() {
-        const pieces = []
+        const pieces = {}
 
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                pieces.push(this.renderPieceAtSlot(i, j, sections.MAIN))
+                const id = this.getSpotState(i, j, sections.MAIN)
+                pieces[id] = this.renderPieceAtSlot(i, j, sections.MAIN)
             }
         }
 
         for (let i = 0; i < 6; i++) {
             for (let j = 0; j < 2; j++) {
-                pieces.push(this.renderPieceAtSlot(i, j, sections.LEFT))
-                pieces.push(this.renderPieceAtSlot(i, j, sections.RIGHT))
+                const leftId = this.getSpotState(i, j, sections.LEFT)
+                const rightId = this.getSpotState(i, j, sections.RIGHT)
+
+                pieces[leftId] = this.renderPieceAtSlot(i, j, sections.LEFT)
+                pieces[rightId] = this.renderPieceAtSlot(i, j, sections.RIGHT)
             }
         }
 
-        return pieces
+        const copy = Object.keys(pieces).slice()
+
+        copy.sort((a, b) => a - b)
+
+        return copy.map(key => pieces[key])
     }
 
     renderSpots() {
         const spots = []
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                const { x, y } = this.getSpotPos(i, j)
+                const { x, y } = this.getSpotPos(i, j, sections.MAIN)
                 const margin = this.state.spotSize * 0.15
                 const transformString = `translate(${x + margin / 2}px, ${
                     y + margin / 2
@@ -716,8 +720,23 @@ class Board extends React.Component {
                             width: this.state.spotSize - margin,
                             height: this.state.spotSize - margin,
                             filter: filterStr,
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
                         }}
-                    ></div>
+                    >
+                        {showDebugState && (
+                            <span
+                                style={{
+                                    color: "white",
+                                    fontSize: "1rem",
+                                    zIndex: 12,
+                                }}
+                            >
+                                {this.getSpotState(i, j)}
+                            </span>
+                        )}
+                    </div>
                 )
             }
         }
@@ -731,28 +750,19 @@ class Board extends React.Component {
         if (spotState === 0) return null
         else {
             const id = spotState
-            let pos
-            switch (section) {
-                case sections.MAIN:
-                    pos = this.getSpotPos(row, col)
-                    break
-                case sections.LEFT:
-                    pos = this.getSideSpotPos(true, row, col)
-                    break
-                case sections.RIGHT:
-                    pos = this.getSideSpotPos(false, row, col)
-                    break
-            }
+            const pos = this.getSpotPos(row, col, section)
 
             const pieceMargin = this.state.spotSize * 0.25
             const pieceSize = this.state.spotSize - pieceMargin
+
+            pos.x += pieceMargin / 2
+            pos.y += pieceMargin / 2
 
             return (
                 <Piece
                     key={id}
                     id={id}
                     pos={pos}
-                    margin={pieceMargin}
                     size={pieceSize}
                     boardPos={this.state.boardBounds}
                     pieceDroppedFunc={this.pieceDropped.bind(this)}
@@ -794,10 +804,34 @@ class Board extends React.Component {
         return Object.values(this.state.boardState.main).includes(id)
     }
 
-    getSpotPos(row, col) {
+    getSpotPos(row, col, section) {
+        switch (section) {
+            case sections.MAIN:
+                return this.getMainSpotPos(row, col)
+            case sections.LEFT:
+                return this.getSideSpotPos(true, row, col)
+            case sections.RIGHT:
+                return this.getSideSpotPos(false, row, col)
+            default:
+                throw "unknown section: " + section
+        }
+    }
+
+    getMainSpotPos(row, col) {
         const spotSize = this.state.spotSize
         const x = this.state.centerStartX
         const y = this.state.spotSize / 2
+
+        return {
+            x: x + col * spotSize,
+            y: y + row * spotSize,
+        }
+    }
+
+    getSideSpotPos(leftSide, row, col) {
+        const spotSize = this.state.spotSize
+        const x = leftSide ? 0 : this.state.centerEndX + this.state.centerGap
+        const y = 0
 
         return {
             x: x + col * spotSize,
@@ -817,17 +851,6 @@ class Board extends React.Component {
         return {
             row,
             col,
-        }
-    }
-
-    getSideSpotPos(leftSide, row, col) {
-        const spotSize = this.state.spotSize
-        const x = leftSide ? 0 : this.state.centerEndX + this.state.centerGap
-        const y = 0
-
-        return {
-            x: x + col * spotSize,
-            y: y + row * spotSize,
         }
     }
 

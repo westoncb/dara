@@ -107,9 +107,9 @@ a:hover {
     background-color: #d7d14c;
     border-radius: 25%;
     box-shadow: 0 0 1rem 0.5rem rgba(0, 0, 0, 0.25);
-    transition-timing-function: ease-in-out;
+    // transition-timing-function: ease-in-out;
     cursor: pointer;
-    z-index: 10;
+    // z-index: 10;
 }
 
 .piece-p2 {
@@ -122,21 +122,11 @@ a:hover {
 }
 
 .piece:hover {
+    touch-action: none;
     background-color: #fffa95;
     --scale-x: 1.05;
     --scale-y: 1.05;
     filter: drop-shadow(0px 0px 0.5rem #fffa95);
-}
-
-.drag-surface {
-    position: absolute;
-    top: -100%;
-    left: -100%;
-    right: -100%;
-    bottom: -100%;
-
-    /* Just below z-index of .piece */
-    z-index: 9;
 }
 
 .player-text-container {
@@ -194,6 +184,16 @@ a:hover {
     margin-right: 0.3rem;
     color: #d2dfe8b0;
     font-weight: bold;
+}
+
+.debug-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36rem;
+    height: 36rem;
+    z-index: 25;
+    background-color: #456;
 }
 
 /* Checkbox stuff from: https://codepen.io/mallendeo/pen/eLIiG */

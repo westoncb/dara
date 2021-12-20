@@ -4,7 +4,8 @@ function PlayerText({ text, highlight, isPlayer1, setUseAI }) {
     return (
         <div
             className={
-                "player-text-container " + (isPlayer1 ? "p1-text" : "p2-text")
+                "player-text player-text-size " +
+                (isPlayer1 ? "p1-text" : "p2-text")
             }
         >
             <div className={highlight ? " text-highlight" : ""}>{text}</div>
@@ -12,7 +13,7 @@ function PlayerText({ text, highlight, isPlayer1, setUseAI }) {
             <div className="toggle-container">
                 <span className="ai-label">A.I.</span>
                 <input
-                    onChange={(e) => setUseAI(e.target.checked)}
+                    onChange={e => setUseAI(e.target.checked)}
                     type="checkbox"
                     id={"cb" + (isPlayer1 ? "p1" : "p2")}
                     className="tgl tgl-ios"

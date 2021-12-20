@@ -5,7 +5,7 @@ function Announcer({ text, xPos, swipeOut }) {
 
     useEffect(() => {
         if (textRef.current) {
-            const baseTransformString = "translate(-50%, -140%)"
+            const baseTransformString = "translate(-50%, -200%)"
 
             textRef.current.style.color = "#ec71ff"
             textRef.current.style.fontSize = "4rem"

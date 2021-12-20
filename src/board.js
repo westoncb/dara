@@ -116,7 +116,8 @@ class Board extends React.Component {
     }
 
     componentDidMount() {
-        window.onresize = debounce(this.onResize, 60)
+        window.onresize = debounce(this.onResize.bind(this), 60)
+        screen.orientation.onchange = this.onResize.bind(this)
 
         this.onResize()
 
@@ -160,7 +161,6 @@ class Board extends React.Component {
 
             setTimeout(() => {
                 this.setState({ aiMakingMove: false })
-
                 this.finishTurn()
             }, AI_ANIM_TIME(this.state.gameState))
         }, AI_MOVE_DELAY(this.state.gameState))
@@ -310,6 +310,7 @@ class Board extends React.Component {
             <div
                 ref={this.boardRef}
                 id="board"
+                className="no-select"
                 style={{
                     width: width + "px",
                     height: height + "px",
@@ -320,32 +321,35 @@ class Board extends React.Component {
                     xPos={announcementXPos}
                     swipeOut={this.state.announcement === messages.gameStart}
                 />{" "}
-                <PlayerText
-                    text={"Player 1"}
-                    isPlayer1
-                    highlight={this.state.activePlayer === players.P1}
-                    setUseAI={useAI => {
-                        this.setState(state => {
-                            return {
-                                p1AI: useAI,
-                            }
-                        })
-                    }}
-                />{" "}
-                <PlayerText
-                    text={"Player 2"}
-                    highlight={this.state.activePlayer === players.P2}
-                    boardRightX={
-                        this.state.boardBounds.x + this.state.boardBounds.width
-                    }
-                    setUseAI={useAI => {
-                        this.setState(state => {
-                            return {
-                                p2AI: useAI,
-                            }
-                        })
-                    }}
-                />{" "}
+                <div className="player-text-container">
+                    <PlayerText
+                        text={"Player 1"}
+                        isPlayer1
+                        highlight={this.state.activePlayer === players.P1}
+                        setUseAI={useAI => {
+                            this.setState(state => {
+                                return {
+                                    p1AI: useAI,
+                                }
+                            })
+                        }}
+                    />
+                    <PlayerText
+                        text={"Player 2"}
+                        highlight={this.state.activePlayer === players.P2}
+                        boardRightX={
+                            this.state.boardBounds.x +
+                            this.state.boardBounds.width
+                        }
+                        setUseAI={useAI => {
+                            this.setState(state => {
+                                return {
+                                    p2AI: useAI,
+                                }
+                            })
+                        }}
+                    />
+                </div>
                 {this.renderPieces().concat(this.renderSpots())}
             </div>
         )
@@ -381,6 +385,15 @@ class Board extends React.Component {
                 (allZeros, pieceState) => pieceState === 0 && allZeros,
                 true
             )
+
+        console.log("all played", allPlayed)
+
+        // console.log(
+        //     "sides",
+        //     Object.values(this.state.boardState.lSide).concat(
+        //         Object.values(this.state.boardState.rSide)
+        //     )
+        // )
 
         return allPlayed
     }

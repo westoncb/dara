@@ -28,6 +28,8 @@ const Piece = React.memo(function Piece({
             containerRef.current.style.zIndex = "11"
 
             const bounds = containerRef.current.getBoundingClientRect()
+            console.log("BOARD POS", boardPos.x, boardPos.y)
+            console.log("set offset", bounds.x, bounds.y)
             setOffset({ x: e.clientX - bounds.x, y: e.clientY - bounds.y })
         }
     }
@@ -35,8 +37,8 @@ const Piece = React.memo(function Piece({
     const handlePointerMove = e => {
         if (pickedUp) {
             const element = containerRef.current
-            const x = e.pageX - offset.x - boardPos.x
-            const y = e.pageY - offset.y - boardPos.y
+            const x = e.clientX - offset.x - boardPos.x
+            const y = e.clientY - offset.y - boardPos.y
             element.style.setProperty("--translate-x", x + "px")
             element.style.setProperty("--translate-y", y + "px")
 
@@ -80,9 +82,9 @@ const Piece = React.memo(function Piece({
                           })`
                         : "",
                 }}
-                onPointerDown={handlePointerDown}
-                onPointerUp={drop}
-                onPointerMove={handlePointerMove}
+                onPointerDown={e => handlePointerDown(e)}
+                onPointerUp={e => drop(e)}
+                onPointerMove={e => handlePointerMove(e)}
             >
                 <img
                     className="ai-hand"

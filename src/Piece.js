@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react"
 import isNil from "lodash.isnil"
 import hand from "../assets/hand2.png"
 
-function Piece({
+const Piece = React.memo(function Piece({
     id,
     size,
     pos,
@@ -97,6 +97,6 @@ function Piece({
             </div>
         </>
     )
-}
+})
 
 export default Piece

@@ -5,7 +5,7 @@ import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 
 const showDebugState = false
-const fastForwardAI = true
+const fastForwardAI = false
 
 const AI_MOVE_DELAY = gameState =>
     gameState === gameStates.DROP && fastForwardAI ? 50 : 1200
@@ -63,8 +63,8 @@ class Board extends React.Component {
                 row: -1,
                 col: -1,
             },
-            p1AI: true,
-            p2AI: true,
+            p1AI: false,
+            p2AI: false,
             aiMakingMove: false,
             aiSelection: { row: -1, col: -1 },
             nextPlayer: players.P1,

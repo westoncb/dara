@@ -706,30 +706,37 @@ class Board extends React.Component {
                 }px)`
 
                 let bgColor = "#222"
-
                 let filterStr = ""
+                let border = "none"
 
                 if (this.state.pickedUpPiece) {
+                    const location = this.findLocationWithPiece(
+                        this.state.pickedUpPiece
+                    )
+                    const legal = this.isMoveLegal(
+                        i,
+                        j,
+                        this.state.activePlayer,
+                        location.row,
+                        location.col
+                    )
+
                     if (
                         i === this.state.selectedBoardPos.row &&
                         j === this.state.selectedBoardPos.col
                     ) {
-                        const location = this.findLocationWithPiece(
-                            this.state.pickedUpPiece
-                        )
-                        const legal = this.isMoveLegal(
-                            i,
-                            j,
-                            this.state.activePlayer,
-                            location.row,
-                            location.col
-                        )
                         filterStr = this.state.effects
                             ? `drop-shadow(0px 0px 0.75rem ${
                                   legal ? "#0f9" : "#f01"
                               })`
                             : ""
                         bgColor = "#4e504e"
+                    } else if (this.getSpotState(i, j) === 0) {
+                        if (legal) {
+                            border = "1px solid #258542"
+                        } else {
+                            border = "2px solid #af2121"
+                        }
                     }
                 }
 
@@ -746,6 +753,8 @@ class Board extends React.Component {
                             display: "flex",
                             justifyContent: "center",
                             alignItems: "center",
+                            transition: "border 200ms ease-out",
+                            border,
                         }}
                     >
                         {showDebugState && (
@@ -787,6 +796,7 @@ class Board extends React.Component {
                     id={id}
                     pos={pos}
                     size={pieceSize}
+                    x
                     boardPos={this.state.boardBounds}
                     pieceDroppedFunc={this.pieceDropped.bind(this)}
                     piecePickedUpFunc={this.piecePickedUp.bind(this)}

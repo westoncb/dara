@@ -69,7 +69,11 @@ const Piece = React.memo(function Piece({
             <div
                 ref={containerRef}
                 key={id}
-                className={"piece piece-add" + (!isPlayer1 ? " piece-p2" : "")}
+                className={
+                    (pieceCanBeLifted(id) ? "playable" : "") +
+                    " piece piece-add" +
+                    (!isPlayer1 ? " piece-p2" : "")
+                }
                 style={{
                     width: size + "px",
                     height: size + "px",

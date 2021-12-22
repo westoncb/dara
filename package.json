@@ -1,51 +1,53 @@
 {
-  "name": "dara",
-  "version": "1.0.0",
-  "description": "An implementation of the Dara strategy board game",
-  "main": "index.js",
-  "scripts": {
-    "dev": "webpack-dev-server --mode development",
-    "build": "webpack --mode production"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/westoncb/dara.git"
-  },
-  "author": "weston c. beecroft",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/westoncb/dara/issues"
-  },
-  "homepage": "https://github.com/westoncb/dara#readme",
-  "devDependencies": {
-    "@babel/core": "^7.11.4",
-    "@babel/plugin-proposal-class-properties": "^7.10.4",
-    "@babel/preset-env": "^7.11.0",
-    "@babel/preset-react": "^7.10.4",
-    "babel-loader": "^8.1.0",
-    "css-loader": "^4.2.1",
-    "file-loader": "^6.0.0",
-    "html-webpack-plugin": "^4.3.0",
-    "react-hot-loader": "^4.12.21",
-    "style-loader": "^1.2.1",
-    "webpack": "^4.44.1",
-    "webpack-cli": "^3.3.12",
-    "webpack-dev-server": "^3.11.0"
-  },
-  "dependencies": {
-    "@babel/plugin-transform-runtime": "^7.11.5",
-    "lodash.debounce": "^4.0.8",
-    "lodash.isempty": "^4.4.0",
-    "lodash.isnil": "^4.0.0",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "sass": "^1.26.10",
-    "sass-loader": "^10.0.2"
-  },
-  "babel": {
-    "plugins": [
-      "@babel/plugin-proposal-class-properties",
-      "@babel/plugin-transform-runtime"
-    ]
-  }
+    "name": "dara",
+    "version": "1.0.0",
+    "description": "An implementation of the Dara strategy board game",
+    "main": "index.js",
+    "scripts": {
+        "dev": "webpack-dev-server --mode development",
+        "build": "webpack --mode production",
+        "deploy": "sudo rsync -e 'ssh -i /Users/westonbeecroft/.aws/thedefault.pem' ./dist/main.bundle.js ec2-user@symbolflux.com:~/newveraug21/personalpage/public/dara/main.bundle.js -v",
+        "bd": "yarn build && yarn deploy"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/westoncb/dara.git"
+    },
+    "author": "weston c. beecroft",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/westoncb/dara/issues"
+    },
+    "homepage": "https://github.com/westoncb/dara#readme",
+    "devDependencies": {
+        "@babel/core": "^7.11.4",
+        "@babel/plugin-proposal-class-properties": "^7.10.4",
+        "@babel/preset-env": "^7.11.0",
+        "@babel/preset-react": "^7.10.4",
+        "babel-loader": "^8.1.0",
+        "css-loader": "^4.2.1",
+        "file-loader": "^6.0.0",
+        "html-webpack-plugin": "^4.3.0",
+        "react-hot-loader": "^4.12.21",
+        "style-loader": "^1.2.1",
+        "webpack": "^4.44.1",
+        "webpack-cli": "^3.3.12",
+        "webpack-dev-server": "^3.11.0"
+    },
+    "dependencies": {
+        "@babel/plugin-transform-runtime": "^7.11.5",
+        "lodash.debounce": "^4.0.8",
+        "lodash.isempty": "^4.4.0",
+        "lodash.isnil": "^4.0.0",
+        "react": "^16.13.1",
+        "react-dom": "^16.13.1",
+        "sass": "^1.26.10",
+        "sass-loader": "^10.0.2"
+    },
+    "babel": {
+        "plugins": [
+            "@babel/plugin-proposal-class-properties",
+            "@babel/plugin-transform-runtime"
+        ]
+    }
 }

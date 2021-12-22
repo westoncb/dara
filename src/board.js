@@ -3,6 +3,7 @@ import debounce from "lodash.debounce"
 import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
+import isEmpty from "lodash.isempty"
 
 const showDebugState = false
 const fastForwardAI = false
@@ -68,13 +69,23 @@ class Board extends React.Component {
             aiMakingMove: false,
             aiSelection: { row: -1, col: -1 },
             nextPlayer: players.P1,
+            errorMessage: null,
+        }
+
+        const oldErrorFunc = console.error
+        console.error = (...args) => {
+            oldErrorFunc(args)
+            const message = args.reduce((accum, next) => {
+                return accum + next
+            })
+            this.setState({ errorMessage: message })
         }
 
         this.boardRef = React.createRef()
         this.canvasRef = React.createRef()
     }
 
-    movePieceTo(newRow, newCol, pieceId, destSection = sections.MAIN) {
+    movePieceTo(newRow, newCol, pieceId, callback = () => {}) {
         const oldLocation = this.findLocationWithPiece(pieceId)
 
         let updatedState = this.setSpotState(
@@ -91,13 +102,13 @@ class Board extends React.Component {
             pieceId,
             true,
             updatedState,
-            destSection
+            sections.MAIN
         )
 
         // Having to do it this weird way since
         // React doesn't batch updates unless they originate
         // from lifecycle methods
-        this.setState(updatedState)
+        this.setState(updatedState, callback)
     }
 
     onResize = () => {
@@ -117,7 +128,13 @@ class Board extends React.Component {
 
     componentDidMount() {
         window.onresize = debounce(this.onResize.bind(this), 60)
-        screen.orientation.onchange = this.onResize.bind(this)
+        window.addEventListener(
+            "deviceorientation",
+            e => {
+                this.onResize()
+            },
+            true
+        )
 
         this.onResize()
 
@@ -316,6 +333,11 @@ class Board extends React.Component {
                     height: height + "px",
                 }}
             >
+                {!isEmpty(this.state.errorMessage) && (
+                    <div className="error-message">
+                        {this.state.errorMessage}
+                    </div>
+                )}
                 <Announcer
                     text={this.state.announcement}
                     xPos={announcementXPos}
@@ -386,15 +408,6 @@ class Board extends React.Component {
                 true
             )
 
-        console.log("all played", allPlayed)
-
-        // console.log(
-        //     "sides",
-        //     Object.values(this.state.boardState.lSide).concat(
-        //         Object.values(this.state.boardState.rSide)
-        //     )
-        // )
-
         return allPlayed
     }
 
@@ -427,8 +440,9 @@ class Board extends React.Component {
                 lastCol
             )
         ) {
-            this.movePieceTo(row, col, pieceId)
-            this.finishTurn()
+            this.movePieceTo(row, col, pieceId, state => {
+                this.finishTurn()
+            })
         }
     }
 

@@ -9,9 +9,7 @@ body {
     overflow: hidden;
     color: rgba(0, 0, 0, 0.34);
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
 
-.noselect {
     -webkit-touch-callout: none; /* iOS Safari */
     -webkit-user-select: none; /* Safari */
     -khtml-user-select: none; /* Konqueror HTML */
@@ -336,4 +334,24 @@ a:hover {
             }
         }
     }
+}
+
+.error-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: black;
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    top: 1rem;
+    bottom: 1rem;
+    background-color: red;
+    border: 3px solid black;
+    z-index: 10000;
+}
+
+.error-boundary {
+    display: flex;
+    flex-direction: column;
 }

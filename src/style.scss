@@ -10,6 +10,7 @@ body {
     color: rgba(0, 0, 0, 0.34);
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 
+    // disable selection
     -webkit-touch-callout: none; /* iOS Safari */
     -webkit-user-select: none; /* Safari */
     -khtml-user-select: none; /* Konqueror HTML */
@@ -360,4 +361,38 @@ a:hover {
 .error-boundary {
     display: flex;
     flex-direction: column;
+}
+
+.cannon-container {
+    height: 101px;
+    width: 117px;
+    position: absolute;
+    transition-property: left, top, right, bottom;
+    transition-duration: 2s;
+    transition-timing-function: ease;
+}
+
+.cannon {
+    position: absolute;
+    height: 138px;
+    width: 101px;
+
+    --cannon-rotate: 0deg;
+    --cannon-translate-x: 8px;
+    --cannon-translate-y: 10px;
+    transform: translate(var(--cannon-translate-x), var(--cannon-translate-y))
+        rotate(var(--cannon-rotate));
+}
+
+.cannon-base {
+    position: absolute;
+    width: 117px;
+    height: 117px;
+
+    --cannon-base-translate-x: 0;
+    --cannon-base-translate-y: 0;
+    transform: translate(
+        var(--cannon-base-translate-x),
+        var(--cannon-base-translate-y)
+    );
 }

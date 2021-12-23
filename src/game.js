@@ -9,9 +9,11 @@ class Game extends React.Component {
 
     render() {
         return (
-            <ErrorBoundary>
-                <Board></Board>
-            </ErrorBoundary>
+            <>
+                <ErrorBoundary>
+                    <Board></Board>
+                </ErrorBoundary>
+            </>
         )
     }
 

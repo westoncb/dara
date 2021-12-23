@@ -11,6 +11,9 @@ const Piece = React.memo(function Piece({
     pieceDroppedFunc,
     pieceDraggedFunc,
     pieceCanBeLifted,
+    destroyPiece,
+    destroyable,
+    hidden,
     drawAIHand,
 }) {
     const [pickedUp, setPickedUp] = useState(false)
@@ -28,8 +31,6 @@ const Piece = React.memo(function Piece({
             containerRef.current.style.zIndex = "11"
 
             const bounds = containerRef.current.getBoundingClientRect()
-            console.log("BOARD POS", boardPos.x, boardPos.y)
-            console.log("set offset", bounds.x, bounds.y)
             setOffset({ x: e.clientX - bounds.x, y: e.clientY - bounds.y })
         }
     }
@@ -78,16 +79,27 @@ const Piece = React.memo(function Piece({
                     width: size + "px",
                     height: size + "px",
                     contain: "size layout",
-                    transition: !pickedUp ? "transform 1000ms" : "none",
+                    transition: !pickedUp
+                        ? "transform 1s"
+                        : hidden
+                        ? "opacity 1s"
+                        : "none",
                     zIndex: drawAIHand ? 12 : 11,
                     filter: drawAIHand
                         ? `drop-shadow(0px 0px 0.5rem #${
                               isPlayer1 ? "fffa95" : "4cd7d1"
                           })`
                         : "",
+                    opacity: hidden ? 0.1 : 1,
                 }}
                 onPointerDown={e => handlePointerDown(e)}
-                onPointerUp={e => drop(e)}
+                onPointerUp={e => {
+                    if (destroyable) {
+                        destroyPiece(id)
+                    } else {
+                        drop(e)
+                    }
+                }}
                 onPointerMove={e => handlePointerMove(e)}
             >
                 <img

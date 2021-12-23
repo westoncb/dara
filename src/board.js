@@ -4,14 +4,16 @@ import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 import isEmpty from "lodash.isempty"
+import { mousePos } from "./global"
+import Cannon from "./Cannon"
 
 const showDebugState = false
 const fastForwardAI = false
 
 const AI_MOVE_DELAY = gameState =>
-    gameState === gameStates.DROP && fastForwardAI ? 50 : 1200
+    gameState === gameStates.DROP && fastForwardAI ? 40 : 1200
 const AI_ANIM_TIME = gameState =>
-    gameState === gameStates.DROP && fastForwardAI ? 100 : 1000
+    gameState === gameStates.DROP && fastForwardAI ? 40 : 1000
 
 const sections = {
     MAIN: 0,
@@ -21,6 +23,7 @@ const sections = {
 const gameStates = {
     DROP: 0,
     MOVE: 1,
+    SEEK: 2,
 }
 const players = {
     P1: 1,
@@ -36,6 +39,7 @@ const messages = {
     gameStart: "Game Start!",
     dropPhase: "Drop phase",
     movePhase: "Move phase",
+    seekPhase: "Seek and destroy!",
 }
 
 class Board extends React.Component {
@@ -135,6 +139,10 @@ class Board extends React.Component {
             },
             true
         )
+        window.addEventListener("mousemove", e => {
+            mousePos.x = e.clientX
+            mousePos.y = e.clientY
+        })
 
         this.onResize()
 
@@ -174,12 +182,12 @@ class Board extends React.Component {
         })
 
         setTimeout(() => {
-            this.movePieceTo(row, col, pieceId)
-
-            setTimeout(() => {
-                this.setState({ aiMakingMove: false })
-                this.finishTurn()
-            }, AI_ANIM_TIME(this.state.gameState))
+            this.movePieceTo(row, col, pieceId, () => {
+                setTimeout(() => {
+                    this.setState({ aiMakingMove: false })
+                    this.finishTurn()
+                }, AI_ANIM_TIME(this.state.gameState))
+            })
         }, AI_MOVE_DELAY(this.state.gameState))
     }
 
@@ -324,80 +332,140 @@ class Board extends React.Component {
             : 0
 
         return (
-            <div
-                ref={this.boardRef}
-                id="board"
-                className="no-select"
-                style={{
-                    width: width + "px",
-                    height: height + "px",
-                }}
-            >
-                {!isEmpty(this.state.errorMessage) && (
-                    <div className="error-message">
-                        {this.state.errorMessage}
-                    </div>
-                )}
-                <Announcer
-                    text={this.state.announcement}
-                    xPos={announcementXPos}
-                    swipeOut={this.state.announcement === messages.gameStart}
-                />{" "}
-                <div className="player-text-container">
-                    <PlayerText
-                        text={"Player 1"}
-                        isPlayer1
-                        highlight={this.state.activePlayer === players.P1}
-                        setUseAI={useAI => {
-                            this.setState(state => {
-                                return {
-                                    p1AI: useAI,
-                                }
-                            })
-                        }}
-                    />
-                    <PlayerText
-                        text={"Player 2"}
-                        highlight={this.state.activePlayer === players.P2}
-                        boardRightX={
-                            this.state.boardBounds.x +
-                            this.state.boardBounds.width
+            <>
+                <Cannon
+                    hPos="left"
+                    vPos="top"
+                    deployed={this.state.gameState === gameStates.SEEK}
+                />
+                <Cannon
+                    hPos="right"
+                    vPos="top"
+                    deployed={this.state.gameState === gameStates.SEEK}
+                />
+                <Cannon
+                    hPos="right"
+                    vPos="bottom"
+                    deployed={this.state.gameState === gameStates.SEEK}
+                />
+                <Cannon
+                    hPos="left"
+                    vPos="bottom"
+                    deployed={this.state.gameState === gameStates.SEEK}
+                />
+                <div
+                    ref={this.boardRef}
+                    id="board"
+                    className="no-select"
+                    style={{
+                        width: width + "px",
+                        height: height + "px",
+                    }}
+                >
+                    {!isEmpty(this.state.errorMessage) && (
+                        <div className="error-message">
+                            {this.state.errorMessage}
+                        </div>
+                    )}
+                    <Announcer
+                        text={this.state.announcement}
+                        xPos={announcementXPos}
+                        swipeOut={
+                            this.state.announcement === messages.gameStart
                         }
-                        setUseAI={useAI => {
-                            this.setState(state => {
-                                return {
-                                    p2AI: useAI,
-                                }
-                            })
-                        }}
-                    />
+                    />{" "}
+                    <div className="player-text-container">
+                        <PlayerText
+                            text={"Player 1"}
+                            isPlayer1
+                            highlight={this.state.activePlayer === players.P1}
+                            setUseAI={useAI => {
+                                this.setState(state => {
+                                    return {
+                                        p1AI: useAI,
+                                    }
+                                })
+                            }}
+                        />
+                        <PlayerText
+                            text={"Player 2"}
+                            highlight={this.state.activePlayer === players.P2}
+                            boardRightX={
+                                this.state.boardBounds.x +
+                                this.state.boardBounds.width
+                            }
+                            setUseAI={useAI => {
+                                this.setState(state => {
+                                    return {
+                                        p2AI: useAI,
+                                    }
+                                })
+                            }}
+                        />
+                    </div>
+                    {this.renderPieces().concat(this.renderSpots())}
                 </div>
-                {this.renderPieces().concat(this.renderSpots())}
-            </div>
+            </>
         )
     }
 
-    finishTurn() {
-        const gameState = this.allSidePiecesPlayed()
-            ? gameStates.MOVE
-            : gameStates.DROP
+    finishTurn(made3InARow = false) {
+        const lastState = this.state.gameState
 
-        const announcement =
-            gameState === gameStates.DROP
-                ? messages.dropPhase
-                : messages.movePhase
+        let gameState
+        if (made3InARow) {
+            gameState = gameStates.SEEK
+        } else {
+            gameState = this.allSidePiecesPlayed()
+                ? gameStates.MOVE
+                : gameStates.DROP
+        }
 
-        this.setState(state => {
-            return {
-                activePlayer:
-                    state.activePlayer === players.P1 ? players.P2 : players.P1,
-                // This is only here for dealing with AI turns
-                nextPlayer:
-                    state.activePlayer === players.P1 ? players.P2 : players.P1,
-                gameState,
-                announcement,
+        let announcement
+        if (gameState === gameStates.SEEK) {
+            announcement = messages.seekPhase
+        } else {
+            announcement =
+                gameState === gameStates.DROP
+                    ? messages.dropPhase
+                    : messages.movePhase
+        }
+
+        this.setState(
+            state => {
+                return {
+                    gameState,
+                    announcement,
+                }
+            },
+            () => {
+                if (gameState !== gameStates.SEEK) {
+                    this.setState(state => {
+                        return {
+                            activePlayer:
+                                state.activePlayer === players.P1
+                                    ? players.P2
+                                    : players.P1,
+                            // This is only here for dealing with AI turns
+                            nextPlayer:
+                                state.activePlayer === players.P1
+                                    ? players.P2
+                                    : players.P1,
+                        }
+                    })
+                }
             }
-        })
+        )
+
+        this.handleStateTransition(lastState, gameState)
+    }
+
+    handleStateTransition(oldState, newState) {
+        if (newState === gameStates.SEEK) {
+            document.getElementsByTagName("body")[0].style.cursor = "crosshair"
+        } else {
+            document.getElementsByTagName("body")[0].style.cursor = "auto"
+        }
     }
 
     allSidePiecesPlayed() {
@@ -441,9 +509,26 @@ class Board extends React.Component {
             )
         ) {
             this.movePieceTo(row, col, pieceId, state => {
-                this.finishTurn()
+                this.finishTurn(
+                    this.moveMakes3InARow(
+                        row,
+                        col,
+                        this.state.activePlayer,
+                        lastRow,
+                        lastCol
+                    )
+                )
             })
         }
+    }
+
+    destroyPiece(pieceId) {
+        const { row, col } = this.findLocationWithPiece(pieceId)
+
+        console.log("DESTROYING", row, col)
+
+        this.setSpotState(row, col, 0, false, this.state, sections.MAIN)
+        this.finishTurn()
     }
 
     pieceDragged(id, mouseX, mouseY) {
@@ -690,6 +775,9 @@ class Board extends React.Component {
 
         const copy = Object.keys(pieces).slice()
 
+        // I am not clear on why it's necessary to sort the pieces in this way,
+        // but I can say it resolves an animation bug (piece would jump immediately
+        // to its destination instead of animating)
         copy.sort((a, b) => a - b)
 
         return copy.map(key => pieces[key])
@@ -802,6 +890,15 @@ class Board extends React.Component {
                     piecePickedUpFunc={this.piecePickedUp.bind(this)}
                     pieceDraggedFunc={this.pieceDragged.bind(this)}
                     pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}
+                    destroyPiece={this.destroyPiece.bind(this)}
+                    destroyable={
+                        this.state.gameState === gameStates.SEEK &&
+                        !this.pieceBelongsToActivePlayer(id)
+                    }
+                    hidden={
+                        this.state.gameState === gameStates.SEEK &&
+                        this.pieceBelongsToActivePlayer(id)
+                    }
                     drawAIHand={
                         this.state.aiSelection.row === row &&
                         this.state.aiSelection.col === col &&

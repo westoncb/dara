@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from "react"
 import isNil from "lodash.isnil"
 import hand from "../assets/hand2.png"
+import { gameStates } from "./global"
+
+const highlightPlayablePieces = false
 
 const Piece = React.memo(function Piece({
     id,
+    gameState,
     size,
     pos,
     boardPos,
@@ -71,7 +75,9 @@ const Piece = React.memo(function Piece({
                 ref={containerRef}
                 key={id}
                 className={
-                    (pieceCanBeLifted(id) ? "playable" : "") +
+                    (pieceCanBeLifted(id) && highlightPlayablePieces
+                        ? "playable"
+                        : "") +
                     " piece piece-add" +
                     (!isPlayer1 ? " piece-p2" : "")
                 }
@@ -91,6 +97,8 @@ const Piece = React.memo(function Piece({
                           })`
                         : "",
                     opacity: hidden ? 0.1 : 1,
+                    cursor:
+                        gameState === gameStates.DESTROY ? "none" : "pointer",
                 }}
                 onPointerDown={e => handlePointerDown(e)}
                 onPointerUp={e => {

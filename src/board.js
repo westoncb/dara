@@ -4,11 +4,12 @@ import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 import isEmpty from "lodash.isempty"
-import { mousePos } from "./global"
+import { mousePos, gameStates } from "./global"
 import Cannon from "./Cannon"
+import Crosshair from "./Crosshair"
 
 const showDebugState = false
-const fastForwardAI = false
+const fastForwardAI = true
 
 const AI_MOVE_DELAY = gameState =>
     gameState === gameStates.DROP && fastForwardAI ? 40 : 1200
@@ -19,11 +20,6 @@ const sections = {
     MAIN: 0,
     LEFT: 1,
     RIGHT: 2,
-}
-const gameStates = {
-    DROP: 0,
-    MOVE: 1,
-    SEEK: 2,
 }
 const players = {
     P1: 1,
@@ -182,10 +178,19 @@ class Board extends React.Component {
         })
 
         setTimeout(() => {
+            const oldLocation = this.findLocationWithPiece(pieceId)
             this.movePieceTo(row, col, pieceId, () => {
                 setTimeout(() => {
                     this.setState({ aiMakingMove: false })
-                    this.finishTurn()
+                    this.finishTurn(
+                        this.moveMakes3InARow(
+                            row,
+                            col,
+                            this.state.activePlayer,
+                            oldLocation.row,
+                            oldLocation.col
+                        )
+                    )
                 }, AI_ANIM_TIME(this.state.gameState))
             })
         }, AI_MOVE_DELAY(this.state.gameState))
@@ -251,6 +256,8 @@ class Board extends React.Component {
             const randIndex = Math.floor(Math.random() * (topMoves.length - 1))
 
             return topMoves[randIndex]
+        } else if (this.state.gameState === gameStates.DESTROY) {
+            console.log("need a 'seek' move")
         }
     }
 
@@ -330,29 +337,15 @@ class Board extends React.Component {
         const announcementXPos = this.boardRef.current
             ? this.boardRef.current.offsetWidth / 2
             : 0
+        const destroyMode = this.state.gameState === gameStates.DESTROY
 
         return (
             <>
-                <Cannon
-                    hPos="left"
-                    vPos="top"
-                    deployed={this.state.gameState === gameStates.SEEK}
-                />
-                <Cannon
-                    hPos="right"
-                    vPos="top"
-                    deployed={this.state.gameState === gameStates.SEEK}
-                />
-                <Cannon
-                    hPos="right"
-                    vPos="bottom"
-                    deployed={this.state.gameState === gameStates.SEEK}
-                />
-                <Cannon
-                    hPos="left"
-                    vPos="bottom"
-                    deployed={this.state.gameState === gameStates.SEEK}
-                />
+                {destroyMode && <Crosshair />}
+                <Cannon hPos="left" vPos="top" deployed={destroyMode} />
+                <Cannon hPos="right" vPos="top" deployed={destroyMode} />
+                <Cannon hPos="right" vPos="bottom" deployed={destroyMode} />
+                <Cannon hPos="left" vPos="bottom" deployed={destroyMode} />
                 <div
                     ref={this.boardRef}
                     id="board"
@@ -414,7 +407,7 @@ class Board extends React.Component {
 
         let gameState
         if (made3InARow) {
-            gameState = gameStates.SEEK
+            gameState = gameStates.DESTROY
         } else {
             gameState = this.allSidePiecesPlayed()
                 ? gameStates.MOVE
@@ -422,7 +415,7 @@ class Board extends React.Component {
         }
 
         let announcement
-        if (gameState === gameStates.SEEK) {
+        if (gameState === gameStates.DESTROY) {
             announcement = messages.seekPhase
         } else {
             announcement =
@@ -439,7 +432,7 @@ class Board extends React.Component {
                 }
             },
             () => {
-                if (gameState !== gameStates.SEEK) {
+                if (gameState !== gameStates.DESTROY) {
                     this.setState(state => {
                         return {
                             activePlayer:
@@ -461,10 +454,10 @@ class Board extends React.Component {
     }
 
     handleStateTransition(oldState, newState) {
-        if (newState === gameStates.SEEK) {
-            document.getElementsByTagName("body")[0].style.cursor = "crosshair"
+        if (newState === gameStates.DESTROY) {
+            document.getElementsByTagName("body")[0].style.cursor = "none"
         } else {
-            document.getElementsByTagName("body")[0].style.cursor = "auto"
+            document.getElementsByTagName("body")[0].style.cursor = "default"
         }
     }
 
@@ -582,8 +575,8 @@ class Board extends React.Component {
     }
 
     isMoveLegal(row, col, player, lastRow, lastCol) {
-        const spotState = this.getSpotState(row, col)
-        const isSpotOccupied = spotState !== 0
+        const pieceId = this.getSpotState(row, col)
+        const isSpotOccupied = pieceId !== 0
 
         if (this.state.gameState === gameStates.DROP) {
             const makes3InARow = this.moveMakes3InARow(row, col, player)
@@ -593,6 +586,8 @@ class Board extends React.Component {
             return (
                 !isSpotOccupied && this.areNeighbors(lastRow, lastCol, row, col)
             )
+        } else if (this.state.gameState === gameStates.DESTROY) {
+            return !this.pieceBelongsToActivePlayer(pieceId)
         }
     }
 
@@ -603,6 +598,8 @@ class Board extends React.Component {
             return this.moveMakes3InARow(row, col, player, lastRow, lastCol)
                 ? 1
                 : 0
+        } else if (this.state.gameState === gameStates.DESTROY) {
+            return 1
         } else {
             return -5
         }
@@ -882,6 +879,7 @@ class Board extends React.Component {
                 <Piece
                     key={id}
                     id={id}
+                    gameState={this.state.gameState}
                     pos={pos}
                     size={pieceSize}
                     x
@@ -892,11 +890,11 @@ class Board extends React.Component {
                     pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}
                     destroyPiece={this.destroyPiece.bind(this)}
                     destroyable={
-                        this.state.gameState === gameStates.SEEK &&
+                        this.state.gameState === gameStates.DESTROY &&
                         !this.pieceBelongsToActivePlayer(id)
                     }
                     hidden={
-                        this.state.gameState === gameStates.SEEK &&
+                        this.state.gameState === gameStates.DESTROY &&
                         this.pieceBelongsToActivePlayer(id)
                     }
                     drawAIHand={

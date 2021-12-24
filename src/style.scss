@@ -132,9 +132,6 @@ a:hover {
     background-color: #d7d14c;
     border-radius: 25%;
     box-shadow: 0 0 1rem 0.5rem rgba(0, 0, 0, 0.25);
-    // transition-timing-function: ease-in-out;
-    cursor: pointer;
-    // z-index: 10;
 }
 
 .piece-p2 {
@@ -394,5 +391,20 @@ a:hover {
     transform: translate(
         var(--cannon-base-translate-x),
         var(--cannon-base-translate-y)
+    );
+}
+
+.crosshair-img {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9000;
+    pointer-events: none;
+
+    --crosshair-translate-x: 0;
+    --crosshair-translate-y: 0;
+    transform: translate(
+        var(--crosshair-translate-x),
+        var(--crosshair-translate-y)
     );
 }

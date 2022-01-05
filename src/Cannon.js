@@ -31,14 +31,17 @@ function Cannon({ hPos, vPos, deployed }) {
         const animate = () => {
             if (isNil(cannonRef.current)) return
 
-            const r =
+            const rotation =
                 (Math.atan(
                     (mousePos.y - cornerPos.y) / (mousePos.x - cornerPos.x)
                 ) *
                     180) /
                     Math.PI +
                 (hPos === "right" ? -90 : 90)
-            cannonRef.current.style.setProperty("--cannon-rotate", r + "deg")
+            cannonRef.current.style.setProperty(
+                "--cannon-rotate",
+                rotation + "deg"
+            )
 
             if (keepGoing) {
                 window.requestAnimationFrame(animate)

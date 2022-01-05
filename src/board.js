@@ -67,8 +67,8 @@ class Board extends React.Component {
             p1AI: false,
             p2AI: false,
             aiMakingMove: false,
+            aiMovePending: true,
             aiSelection: { row: -1, col: -1 },
-            nextPlayer: players.P1,
             errorMessage: null,
         }
 
@@ -153,55 +153,71 @@ class Board extends React.Component {
         }, 1750)
     }
 
+    isAI(player) {
+        return (
+            (player === players.P1 && this.state.p1AI) ||
+            (player === players.P2 && this.state.p2AI)
+        )
+    }
+
     componentDidUpdate(prevProps, prevState, snapshot) {
         const state = this.state
 
-        if (
-            !state.aiMakingMove &&
-            state.nextPlayer === state.activePlayer &&
-            ((state.activePlayer === players.P1 && state.p1AI) ||
-                (state.activePlayer === players.P2 && state.p2AI))
-        ) {
+        if (state.aiMovePending && this.isAI(state.activePlayer)) {
             this.aiTurnWithDuration()
         }
     }
 
     aiTurnWithDuration() {
-        const { pieceId, row, col } = this.getAIMove()
-        this.setState(state => {
-            return {
-                aiMakingMove: true,
-                aiSelection: { row, col },
-                nextPlayer:
-                    state.activePlayer === players.P1 ? players.P2 : players.P1,
-            }
-        })
+        this.setState(
+            state => {
+                return {
+                    aiMakingMove: true,
+                    aiMovePending: false,
+                }
+            },
+            () => {
+                const { pieceId, row, col } = this.generateAIMove()
 
-        setTimeout(() => {
-            const oldLocation = this.findLocationWithPiece(pieceId)
-            this.movePieceTo(row, col, pieceId, () => {
-                setTimeout(() => {
-                    this.setState({ aiMakingMove: false })
-                    this.finishTurn(
-                        this.moveMakes3InARow(
-                            row,
-                            col,
-                            this.state.activePlayer,
-                            oldLocation.row,
-                            oldLocation.col
-                        )
-                    )
-                }, AI_ANIM_TIME(this.state.gameState))
-            })
-        }, AI_MOVE_DELAY(this.state.gameState))
+                if (this.state.gameState === gameStates.DESTROY) {
+                    setTimeout(() => {
+                        setTimeout(() => {
+                            this.setState({ aiSelection: { row, col } }, () => {
+                                this.destroyPiece(pieceId)
+                            })
+                        }, AI_ANIM_TIME(this.state.gameState))
+                    }, AI_MOVE_DELAY(this.state.gameState))
+                } else {
+                    this.setState({ aiSelection: { row, col } }, () => {
+                        setTimeout(() => {
+                            const oldLocation =
+                                this.findLocationWithPiece(pieceId)
+                            this.movePieceTo(row, col, pieceId, () => {
+                                setTimeout(() => {
+                                    this.finishTurn(
+                                        this.moveMakes3InARow(
+                                            row,
+                                            col,
+                                            this.state.activePlayer,
+                                            oldLocation.row,
+                                            oldLocation.col
+                                        )
+                                    )
+                                }, AI_ANIM_TIME(this.state.gameState))
+                            })
+                        }, AI_MOVE_DELAY(this.state.gameState))
+                    })
+                }
+            }
+        )
     }
 
-    getAIMove() {
+    generateAIMove() {
         const player = this.state.activePlayer
 
         if (this.state.gameState === gameStates.DROP) {
             const pieceId = this.findUnplayedPiece(player)
-            const legalMoves = this.getLegalMoves(player, -1, -1)
+            const legalMoves = this.getLegalMoves(player)
 
             const [row, col] =
                 legalMoves[Math.floor(Math.random() * (legalMoves.length - 1))]
@@ -257,7 +273,14 @@ class Board extends React.Component {
 
             return topMoves[randIndex]
         } else if (this.state.gameState === gameStates.DESTROY) {
-            console.log("need a 'seek' move")
+            const legalMoves = this.getLegalMoves(player)
+            const randIndex = Math.floor(
+                Math.random() * (legalMoves.length - 1)
+            )
+            const [row, col] = legalMoves[randIndex]
+            const pieceId = this.getSpotState(row, col)
+
+            return { pieceId, row, col }
         }
     }
 
@@ -341,7 +364,12 @@ class Board extends React.Component {
 
         return (
             <>
-                {destroyMode && <Crosshair />}
+                {destroyMode && (
+                    <Crosshair
+                        aiMakingMove={this.state.aiMakingMove}
+                        aiSelection={this.state.aiSelection}
+                    />
+                )}
                 <Cannon hPos="left" vPos="top" deployed={destroyMode} />
                 <Cannon hPos="right" vPos="top" deployed={destroyMode} />
                 <Cannon hPos="right" vPos="bottom" deployed={destroyMode} />
@@ -372,13 +400,9 @@ class Board extends React.Component {
                             text={"Player 1"}
                             isPlayer1
                             highlight={this.state.activePlayer === players.P1}
-                            setUseAI={useAI => {
-                                this.setState(state => {
-                                    return {
-                                        p1AI: useAI,
-                                    }
-                                })
-                            }}
+                            setUseAI={useAI =>
+                                this.handleAIToggle(useAI, players.P1)
+                            }
                         />
                         <PlayerText
                             text={"Player 2"}
@@ -387,19 +411,27 @@ class Board extends React.Component {
                                 this.state.boardBounds.x +
                                 this.state.boardBounds.width
                             }
-                            setUseAI={useAI => {
-                                this.setState(state => {
-                                    return {
-                                        p2AI: useAI,
-                                    }
-                                })
-                            }}
+                            setUseAI={useAI =>
+                                this.handleAIToggle(useAI, players.P2)
+                            }
                         />
                     </div>
                     {this.renderPieces().concat(this.renderSpots())}
                 </div>
             </>
         )
+    }
+
+    handleAIToggle(useAI, player) {
+        const aiPlayerKey = player === players.P2 ? "p2AI" : "p1AI"
+
+        this.setState(state => {
+            return {
+                [aiPlayerKey]: useAI,
+                aiMovePending:
+                    state.activePlayer === player || state.aiMovePending,
+            }
+        })
     }
 
     finishTurn(made3InARow = false) {
@@ -429,22 +461,33 @@ class Board extends React.Component {
                 return {
                     gameState,
                     announcement,
+                    aiMakingMove: false,
                 }
             },
             () => {
-                if (gameState !== gameStates.DESTROY) {
-                    this.setState(state => {
-                        return {
-                            activePlayer:
-                                state.activePlayer === players.P1
-                                    ? players.P2
-                                    : players.P1,
-                            // This is only here for dealing with AI turns
-                            nextPlayer:
-                                state.activePlayer === players.P1
-                                    ? players.P2
-                                    : players.P1,
-                        }
+                if (made3InARow) {
+                    if (this.isAI(this.state.activePlayer)) {
+                        this.setState({ aiMovePending: true })
+                        console.log("made3InARow + AI-turn")
+                    }
+                } else {
+                    const nextPlayer =
+                        this.state.activePlayer === players.P1
+                            ? players.P2
+                            : players.P1
+                    const nextPlayerIsAI = this.isAI(nextPlayer)
+
+                    console.log(
+                        "next player",
+                        nextPlayer,
+                        "; aiMovePending: ",
+                        nextPlayerIsAI
+                    )
+
+                    this.setState({
+                        // This is only here for dealing with AI turns
+                        activePlayer: nextPlayer,
+                        aiMovePending: nextPlayerIsAI,
                     })
                 }
             }
@@ -456,6 +499,7 @@ class Board extends React.Component {
     handleStateTransition(oldState, newState) {
         if (newState === gameStates.DESTROY) {
             document.getElementsByTagName("body")[0].style.cursor = "none"
+            this.setState({ aiMovePending: true })
         } else {
             document.getElementsByTagName("body")[0].style.cursor = "default"
         }
@@ -576,18 +620,18 @@ class Board extends React.Component {
 
     isMoveLegal(row, col, player, lastRow, lastCol) {
         const pieceId = this.getSpotState(row, col)
-        const isSpotOccupied = pieceId !== 0
+        const spotIsOccupied = pieceId !== 0
 
         if (this.state.gameState === gameStates.DROP) {
             const makes3InARow = this.moveMakes3InARow(row, col, player)
 
-            return !isSpotOccupied && !makes3InARow
+            return !spotIsOccupied && !makes3InARow
         } else if (this.state.gameState === gameStates.MOVE) {
             return (
-                !isSpotOccupied && this.areNeighbors(lastRow, lastCol, row, col)
+                !spotIsOccupied && this.areNeighbors(lastRow, lastCol, row, col)
             )
         } else if (this.state.gameState === gameStates.DESTROY) {
-            return !this.pieceBelongsToActivePlayer(pieceId)
+            return !this.pieceBelongsToActivePlayer(pieceId) && spotIsOccupied
         }
     }
 
@@ -775,6 +819,10 @@ class Board extends React.Component {
         // I am not clear on why it's necessary to sort the pieces in this way,
         // but I can say it resolves an animation bug (piece would jump immediately
         // to its destination instead of animating)
+        //
+        // I've noticed since originally writing this that the bug is resolved even if
+        // we skip sorting here. However, I'm keeping it because I believe the issue is related
+        // to order and when we skip sorting the current order happens to work but it's unknown why.
         copy.sort((a, b) => a - b)
 
         return copy.map(key => pieces[key])

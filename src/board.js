@@ -295,12 +295,6 @@ class Board extends React.Component {
         return row + "," + col
     }
 
-    sectionStateToID(sectionState) {
-        if (sectionState === this.state.boardState.main) return sections.MAIN
-        if (sectionState === this.state.boardState.lSide) return sections.LEFT
-        if (sectionState === this.state.boardState.rSide) return sections.RIGHT
-    }
-
     findUnplayedPiece(player) {
         const sideState =
             player === players.P1
@@ -577,19 +571,16 @@ class Board extends React.Component {
     }
 
     findLocationWithPiece(pieceId) {
-        return [
-            this.state.boardState.main,
-            this.state.boardState.lSide,
-            this.state.boardState.rSide,
-        ]
-            .map(sectionState => {
+        return Object.values(sections)
+            .map(sectionName => {
+                const sectionState = this.state.boardState[sectionName]
                 const resultKey = Object.keys(sectionState).find(
                     key => sectionState[key] === pieceId
                 )
 
                 return resultKey !== undefined
                     ? {
-                          section: this.sectionStateToID(sectionState),
+                          section: sectionName,
                           row: this.coordsFromKey(resultKey)[0],
                           col: this.coordsFromKey(resultKey)[1],
                       }
@@ -721,14 +712,7 @@ class Board extends React.Component {
     }
 
     getSpotState(row, col, section = sections.MAIN) {
-        switch (section) {
-            case sections.MAIN:
-                return this.state.boardState.main[row + "," + col]
-            case sections.LEFT:
-                return this.state.boardState.lSide[row + "," + col]
-            case sections.RIGHT:
-                return this.state.boardState.rSide[row + "," + col]
-        }
+        return this.state.boardState[section][row + "," + col]
     }
 
     async setSpotState(
@@ -736,7 +720,7 @@ class Board extends React.Component {
         col,
         spotState,
         section = sections.MAIN,
-        defer = false,
+        defer = false, // i.e. don't actually update the state right now
         boardState = this.state.boardState,
         callback = () => {}
     ) {
@@ -903,8 +887,8 @@ class Board extends React.Component {
                     piecePickedUpFunc={this.piecePickedUp.bind(this)}
                     pieceDraggedFunc={this.pieceDragged.bind(this)}
                     pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}
-                    destroyPiece={() => {
-                        this.destroyPiece()
+                    destroyPiece={pieceId => {
+                        this.destroyPiece(pieceId)
                         this.finishTurn()
                     }}
                     destroyable={

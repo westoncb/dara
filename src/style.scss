@@ -375,10 +375,7 @@ a:hover {
     width: 101px;
 
     --cannon-rotate: 0deg;
-    --cannon-translate-x: 8px;
-    --cannon-translate-y: 10px;
-    transform: translate(var(--cannon-translate-x), var(--cannon-translate-y))
-        rotate(var(--cannon-rotate));
+    transform: rotate(var(--cannon-rotate));
 }
 
 .cannon-base {

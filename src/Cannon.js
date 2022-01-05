@@ -7,11 +7,11 @@ import isNil from "lodash.isnil"
 function Cannon({ hPos, vPos, deployed }) {
     const initialPosition = {
         [hPos]: "0px",
-        [vPos]: vPos === "top" ? "-101px" : "-148px",
+        [vPos]: vPos === "top" ? "-138px" : "-101px",
     }
     const deployedPosition = {
         [hPos]: "-50px",
-        [vPos]: vPos === "top" ? "0px" : "-42px",
+        [vPos]: vPos === "top" ? "-20px" : "-10px",
     }
 
     const cornerPos = {

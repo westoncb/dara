@@ -5,4 +5,26 @@ const gameStates = {
     DESTROY: 2,
 }
 
-export { mousePos, gameStates }
+const sections = {
+    MAIN: "main",
+    LEFT: "lSide",
+    RIGHT: "rSide",
+}
+const players = {
+    P1: 1,
+    P2: 2,
+}
+const directions = {
+    UP: 0,
+    DOWN: 1,
+    LEFT: 2,
+    RIGHT: 3,
+}
+const messages = {
+    gameStart: "Game Start!",
+    dropPhase: "Drop phase",
+    movePhase: "Move phase",
+    destroyPhase: "Seek and destroy!",
+}
+
+export { mousePos, gameStates, sections, players, directions, messages }

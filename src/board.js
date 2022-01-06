@@ -1,12 +1,21 @@
-import React from "react"
+import React, { useRef, useEffect, useMemo } from "react"
 import debounce from "lodash.debounce"
 import Announcer from "./Announcer"
 import Piece from "./Piece"
 import PlayerText from "./PlayerText"
 import isEmpty from "lodash.isempty"
-import { mousePos, gameStates } from "./global"
+import {
+    mousePos,
+    gameStates,
+    sections,
+    players,
+    directions,
+    messages,
+} from "./global"
 import Cannon from "./Cannon"
 import Crosshair from "./Crosshair"
+import { useStore, setState } from "./store"
+import isNil from "lodash.isnil"
 
 const showDebugState = false
 const fastForwardAI = true
@@ -16,67 +25,38 @@ const AI_MOVE_DELAY = gameState =>
 const AI_ANIM_TIME = gameState =>
     gameState === gameStates.DROP && fastForwardAI ? 40 : 1000
 
-const sections = {
-    MAIN: "main",
-    LEFT: "lSide",
-    RIGHT: "rSide",
-}
-const players = {
-    P1: 1,
-    P2: 2,
-}
-const directions = {
-    UP: 0,
-    DOWN: 1,
-    LEFT: 2,
-    RIGHT: 3,
-}
-const messages = {
-    gameStart: "Game Start!",
-    dropPhase: "Drop phase",
-    movePhase: "Move phase",
-    destroyPhase: "Seek and destroy!",
-}
-
 const pause = duration => {
     return new Promise(resolve => {
         setTimeout(resolve, duration)
     })
 }
 
-class Board extends React.Component {
-    constructor(props) {
-        super(props)
+function Board({}) {
+    const {
+        gameState,
+        boardState,
+        activePlayer,
+        p1AI,
+        p2AI,
+        aiMakingMove,
+        aiSelection,
+        selectedBoardPos,
+        pickedUpPiece,
+        effects,
+        boardMetrics,
+        errorMessage,
+        announcement,
+    } = useStore()
 
-        this.state = {
-            boardState: this.getEmptyBoard(),
-            boardWidth: 1,
-            boardHeight: 1,
-            centerStartX: 1,
-            centerEndX: 1,
-            spotSize: 1,
-            effects: true,
-            announcement: "",
-            boardBounds: {
-                x: 1,
-                y: 1,
-                width: 1,
-                height: 1,
-            },
-            pickedUpPiece: null,
-            gameState: gameStates.DROP,
-            activePlayer: players.P1,
-            selectedBoardPos: {
-                row: -1,
-                col: -1,
-            },
-            p1AI: false,
-            p2AI: false,
-            aiMakingMove: false,
-            aiSelection: { row: -1, col: -1 },
-            errorMessage: null,
-        }
+    const boardRef = useRef(null)
 
+    const announcementXPos = !isNil(boardRef.current)
+        ? boardRef.current.offsetWidth / 2
+        : 0
+    const destroyMode = gameState === gameStates.DESTROY
+
+    // general initialization
+    useEffect(() => {
         // modify console.error to show message in-component
         const oldErrorFunc = console.error
         console.error = (...args) => {
@@ -84,41 +64,76 @@ class Board extends React.Component {
             const message = args.reduce((accum, next) => {
                 return accum + next
             })
-            this.setState({ errorMessage: message })
+            setState({ errorMessage: message })
+        }
+        window.addEventListener("mousemove", e => {
+            mousePos.x = e.clientX
+            mousePos.y = e.clientY
+        })
+
+        // dispay opening messages
+        setState({
+            announcement: messages.gameStart,
+        })
+        setTimeout(() => {
+            setState({
+                announcement: messages.dropPhase,
+            })
+        }, 1750)
+    }, [])
+
+    // set up resize behavior
+    useEffect(() => {
+        if (isNil(boardRef.current)) {
+            return
         }
 
-        this.boardRef = React.createRef()
-        this.canvasRef = React.createRef()
-    }
+        const onResize = () => {
+            const { width, height, centerStartX, centerEndX, centerGap } =
+                getBoardDimensions()
 
-    // promisified version of setState
-    pSetState(newState, callback = () => {}) {
-        return new Promise(resolve =>
-            this.setState(newState, () => {
-                callback()
-                resolve()
+            const bcRect = boardRef.current.getBoundingClientRect()
+            console.log("BCRECT", bcRect)
+
+            setState({
+                boardMetrics: {
+                    x: bcRect.x,
+                    y: bcRect.y,
+                    width,
+                    height,
+                    centerStartX,
+                    centerEndX,
+                    centerGap,
+                    spotSize: height / 6,
+                },
             })
-        )
-    }
+        }
 
-    async movePieceTo(newRow, newCol, pieceId) {
-        const oldLocation = this.findLocationWithPiece(pieceId)
+        const debouncedResize = debounce(onResize, 60)
+        window.onresize = debouncedResize
+        window.addEventListener("deviceorientation", debouncedResize, true)
+
+        onResize()
+    }, [boardRef.current])
+
+    async function movePieceTo(newRow, newCol, pieceId) {
+        const oldLocation = findLocationWithPiece(pieceId)
 
         // Note: the complex way we're dealing with the two calls to setSpotState
         // is necessary since we can't count on React to batch the setState calls
         // involved, but they need to be batched in order for piece-moving
         // animation to work correctly
 
-        const updatedBoardState = await this.setSpotState(
+        const updatedBoardState = await setSpotState(
             oldLocation.row,
             oldLocation.col,
             0,
             oldLocation.section,
             true,
-            this.state.boardState
+            boardState
         )
 
-        this.setSpotState(
+        setSpotState(
             newRow,
             newCol,
             pieceId,
@@ -128,113 +143,63 @@ class Board extends React.Component {
         )
     }
 
-    onResize = () => {
-        const { width, height, centerStartX, centerEndX, centerGap } =
-            this.getBoardDimensions()
-
-        this.setState({
-            boardWidth: width,
-            boardHeight: height,
-            centerStartX,
-            centerEndX,
-            spotSize: height / 6,
-            centerGap,
-            boardBounds: this.boardRef.current.getBoundingClientRect(),
-        })
-    }
-
-    componentDidMount() {
-        window.onresize = debounce(this.onResize.bind(this), 60)
-        window.addEventListener(
-            "deviceorientation",
-            e => {
-                this.onResize()
-            },
-            true
-        )
-        window.addEventListener("mousemove", e => {
-            mousePos.x = e.clientX
-            mousePos.y = e.clientY
-        })
-
-        this.onResize()
-
-        this.setState({
-            announcement: messages.gameStart,
-        })
-
-        setTimeout(() => {
-            this.setState({
-                announcement: messages.dropPhase,
-            })
-        }, 1750)
-    }
-
-    isAI(player) {
+    function isAI(player) {
         return (
-            (player === players.P1 && this.state.p1AI) ||
-            (player === players.P2 && this.state.p2AI)
+            (player === players.P1 && p1AI) || (player === players.P2 && p2AI)
         )
     }
 
-    async aiTurnWithDuration() {
-        const gameState = this.state.gameState
+    async function aiTurnWithDuration() {
+        console.log("starting ai turn with duration: ", activePlayer)
 
-        await this.pSetState({
+        setState({
             aiMakingMove: true,
         })
         await pause(AI_MOVE_DELAY(gameState))
 
-        const move = this.generateAIMove()
+        const move = generateAIMove()
 
-        this.setState(
-            { aiSelection: { row: move.row, col: move.col } },
-            async () => {
-                const oldLocation = this.findLocationWithPiece(move.pieceId)
-                const makes3InARow = this.moveMakes3InARow(
-                    move.row,
-                    move.col,
-                    this.state.activePlayer,
-                    oldLocation.row,
-                    oldLocation.col
-                )
+        setState({ aiSelection: { row: move.row, col: move.col } })
 
-                if (gameState === gameStates.DESTROY) {
-                    this.destroyPiece(move.pieceId)
-                } else {
-                    await this.movePieceTo(move.row, move.col, move.pieceId)
-                }
-
-                await pause(AI_ANIM_TIME(gameState))
-                await this.finishTurn(makes3InARow)
-            }
+        const oldLocation = findLocationWithPiece(move.pieceId)
+        const makes3InARow = moveMakes3InARow(
+            move.row,
+            move.col,
+            activePlayer,
+            oldLocation.row,
+            oldLocation.col
         )
+
+        if (gameState === gameStates.DESTROY) {
+            destroyPiece(move.pieceId)
+        } else {
+            await movePieceTo(move.row, move.col, move.pieceId)
+        }
+
+        await pause(AI_ANIM_TIME(gameState))
+        await finishTurn(makes3InARow)
     }
 
-    generateAIMove() {
-        const player = this.state.activePlayer
+    function generateAIMove() {
+        const player = activePlayer
 
-        if (this.state.gameState === gameStates.DROP) {
-            const pieceId = this.findUnplayedPiece(player)
-            const legalMoves = this.getLegalMoves(player)
+        if (gameState === gameStates.DROP) {
+            const pieceId = findUnplayedPiece(player)
+            const legalMoves = getLegalMoves(player)
 
             const [row, col] =
                 legalMoves[Math.floor(Math.random() * (legalMoves.length - 1))]
 
             return { pieceId, row, col }
-        } else if (this.state.gameState === gameStates.MOVE) {
-            const playerPieces = this.getPlayerPieces(player)
+        } else if (gameState === gameStates.MOVE) {
+            const playerPieces = getPlayerPieces(player)
 
             const scoredMoves = playerPieces.reduce((allMoves, pieceId) => {
-                const location = this.findLocationWithPiece(pieceId)
+                const location = findLocationWithPiece(pieceId)
                 const lastRow = location.row
                 const lastCol = location.col
 
-                const movesForPiece = this.getLegalMoves(
-                    player,
-                    lastRow,
-                    lastCol
-                )
+                const movesForPiece = getLegalMoves(player, lastRow, lastCol)
 
                 return allMoves.concat(
                     movesForPiece.map(move => ({
@@ -242,7 +207,7 @@ class Board extends React.Component {
                         lastCoords: [lastRow, lastCol],
                         row: move[0],
                         col: move[1],
-                        score: this.scoreCandidateMove(
+                        score: scoreCandidateMove(
                             move[0],
                             move[1],
                             player,
@@ -275,177 +240,61 @@ class Board extends React.Component {
             const randIndex = Math.floor(Math.random() * (topMoves.length - 1))
 
             return topMoves[randIndex]
-        } else if (this.state.gameState === gameStates.DESTROY) {
-            const legalMoves = this.getLegalMoves(player)
+        } else if (gameState === gameStates.DESTROY) {
+            const legalMoves = getLegalMoves(player)
             const randIndex = Math.floor(
                 Math.random() * (legalMoves.length - 1)
             )
             const [row, col] = legalMoves[randIndex]
-            const pieceId = this.getSpotState(row, col)
+            const pieceId = getSpotState(row, col)
 
             return { pieceId, row, col }
         }
     }
 
-    coordsFromKey(key) {
-        return key.split(",").map(s => Number(s))
-    }
-
-    coordsToKey(row, col) {
-        return row + "," + col
-    }
-
-    findUnplayedPiece(player) {
+    function findUnplayedPiece(player) {
         const sideState =
-            player === players.P1
-                ? this.state.boardState.lSide
-                : this.state.boardState.rSide
+            player === players.P1 ? boardState.lSide : boardState.rSide
 
         return Object.values(sideState).find(spotState => spotState !== 0)
     }
 
-    getPlayerPieces(player) {
-        const boardState = this.state.boardState
+    function getPlayerPieces(player) {
         const spots = Object.values(boardState.lSide)
             .concat(Object.values(boardState.rSide))
             .concat(Object.values(boardState.main))
 
         return spots.filter(
-            spotState =>
-                spotState !== 0 && this.pieceOwner(spotState) === player
+            spotState => spotState !== 0 && getPieceOwner(spotState) === player
         )
     }
 
-    getFreeSpaces() {
-        return Object.keys(this.state.boardState.main).filter(boardLoc => {
-            this.state.boardState.main[boardLoc] === 0
+    function getFreeSpaces() {
+        return Object.keys(boardState.main).filter(boardLoc => {
+            boardState.main[boardLoc] === 0
         })
     }
 
-    getBoardDimensions() {
-        const app = document.getElementById("app")
-
-        // (vertical_pieces / horizontal_pieces) - 2.5% of width gap size between center and each side area
-        const aspectRatio = 6 / (6 + 4) - 0.05
-
-        let width = app.offsetWidth * 0.85
-        let noGapWidth = app.offsetWidth * 0.8
-        let height = width * aspectRatio
-
-        if (height > app.offsetHeight * 0.6) {
-            height = app.offsetHeight * 0.6
-            width = height / aspectRatio
-            noGapWidth = height / (aspectRatio + 0.05)
-        }
-
-        const gap = (width - noGapWidth) / 2
-
-        const centerStartX = noGapWidth * (2 / 10) + gap
-        const centerEndX = centerStartX + noGapWidth * (6 / 10)
-
-        return {
-            width,
-            height,
-            centerStartX,
-            centerEndX,
-            centerGap: gap,
-        }
-    }
-
-    render() {
-        const { width, height } = this.getBoardDimensions()
-        const announcementXPos = this.boardRef.current
-            ? this.boardRef.current.offsetWidth / 2
-            : 0
-        const destroyMode = this.state.gameState === gameStates.DESTROY
-
-        return (
-            <>
-                {destroyMode && (
-                    <Crosshair
-                        aiMakingMove={this.state.aiMakingMove}
-                        aiSelection={this.state.aiSelection}
-                    />
-                )}
-                <Cannon hPos="left" vPos="top" deployed={destroyMode} />
-                <Cannon hPos="right" vPos="top" deployed={destroyMode} />
-                <Cannon hPos="right" vPos="bottom" deployed={destroyMode} />
-                <Cannon hPos="left" vPos="bottom" deployed={destroyMode} />
-                <div
-                    ref={this.boardRef}
-                    id="board"
-                    className="no-select"
-                    style={{
-                        width: width + "px",
-                        height: height + "px",
-                    }}
-                >
-                    {!isEmpty(this.state.errorMessage) && (
-                        <div className="error-message">
-                            {this.state.errorMessage}
-                        </div>
-                    )}
-                    <Announcer
-                        text={this.state.announcement}
-                        xPos={announcementXPos}
-                        swipeOut={
-                            this.state.announcement === messages.gameStart
-                        }
-                    />{" "}
-                    <div className="player-text-container">
-                        <PlayerText
-                            text={"Player 1"}
-                            isPlayer1
-                            highlight={this.state.activePlayer === players.P1}
-                            setUseAI={useAI =>
-                                this.handleAIToggle(useAI, players.P1)
-                            }
-                        />
-                        <PlayerText
-                            text={"Player 2"}
-                            highlight={this.state.activePlayer === players.P2}
-                            boardRightX={
-                                this.state.boardBounds.x +
-                                this.state.boardBounds.width
-                            }
-                            setUseAI={useAI =>
-                                this.handleAIToggle(useAI, players.P2)
-                            }
-                        />
-                    </div>
-                    {this.renderPieces().concat(this.renderSpots())}
-                </div>
-            </>
-        )
-    }
-
-    handleAIToggle(useAI, player) {
+    function handleAIToggle(useAI, player) {
         const aiPlayerKey = player === players.P2 ? "p2AI" : "p1AI"
 
-        this.setState(
-            {
-                [aiPlayerKey]: useAI,
-            },
-            () => {
-                if (
-                    useAI &&
-                    this.state.activePlayer === player &&
-                    !this.state.aiMakingMove
-                ) {
-                    this.aiTurnWithDuration()
-                }
-            }
-        )
+        setState({
+            [aiPlayerKey]: useAI,
+        })
+
+        if (useAI && activePlayer === player && !aiMakingMove) {
+            aiTurnWithDuration()
+        }
     }
 
-    async finishTurn(made3InARow = false) {
-        const lastState = this.state.gameState
+    function finishTurn(made3InARow = false) {
+        const lastState = gameState
 
         let gameState
         if (made3InARow) {
             gameState = gameStates.DESTROY
         } else {
-            gameState = this.allSidePiecesPlayed()
+            gameState = allSidePiecesPlayed()
                 ? gameStates.MOVE
                 : gameStates.DROP
         }
@@ -460,32 +309,35 @@ class Board extends React.Component {
                     : messages.movePhase
         }
 
-        await this.pSetState({
+        setState({
             gameState,
             announcement,
             aiMakingMove: false,
         })
 
-        let nextPlayer =
-            this.state.activePlayer === players.P1 ? players.P2 : players.P1
+        console.log("finishing turn for", activePlayer)
+
+        let nextPlayer = activePlayer === players.P1 ? players.P2 : players.P1
 
         if (made3InARow) {
             // same player makes another move if they got 3 in a row
-            nextPlayer = this.state.activePlayer
+            nextPlayer = activePlayer
         } else {
-            await this.pSetState({
+            setState({
                 activePlayer: nextPlayer,
             })
         }
 
-        this.handleStateTransition(lastState, gameState)
+        console.log("new active player", activePlayer)
 
-        if (this.isAI(nextPlayer)) {
-            this.aiTurnWithDuration()
+        handleStateTransition(lastState, gameState)
+
+        if (isAI(nextPlayer)) {
+            aiTurnWithDuration()
         }
     }
 
-    handleStateTransition(oldState, newState) {
+    function handleStateTransition(oldState, newState) {
         if (newState === gameStates.DESTROY) {
             document.getElementsByTagName("body")[0].style.cursor = "none"
         } else {
@@ -493,9 +345,9 @@ class Board extends React.Component {
         }
     }
 
-    allSidePiecesPlayed() {
-        const allPlayed = Object.values(this.state.boardState.lSide)
-            .concat(Object.values(this.state.boardState.rSide))
+    function allSidePiecesPlayed() {
+        const allPlayed = Object.values(boardState.lSide)
+            .concat(Object.values(boardState.rSide))
             .reduce(
                 (allZeros, pieceState) => pieceState === 0 && allZeros,
                 true
@@ -504,64 +356,48 @@ class Board extends React.Component {
         return allPlayed
     }
 
-    piecePickedUp(id) {
-        this.setState({
+    function piecePickedUp(id) {
+        setState({
             pickedUpPiece: id,
         })
     }
 
-    async pieceDropped(pieceId) {
-        this.setState({
+    async function pieceDropped(pieceId) {
+        setState({
             pickedUpPiece: null,
         })
-        const { row, col } = this.state.selectedBoardPos
+        const { row, col } = selectedBoardPos
         let lastRow = -1
         let lastCol = -1
 
-        if (this.state.gameState === gameStates.MOVE) {
-            const oldLocation = this.findLocationWithPiece(pieceId)
+        if (gameState === gameStates.MOVE) {
+            const oldLocation = findLocationWithPiece(pieceId)
             lastRow = oldLocation.row
             lastCol = oldLocation.col
         }
 
-        if (
-            this.isMoveLegal(
-                row,
-                col,
-                this.state.activePlayer,
-                lastRow,
-                lastCol
-            )
-        ) {
-            await this.movePieceTo(row, col, pieceId)
-            this.finishTurn(
-                this.moveMakes3InARow(
-                    row,
-                    col,
-                    this.state.activePlayer,
-                    lastRow,
-                    lastCol
-                )
+        if (isMoveLegal(row, col, activePlayer, lastRow, lastCol)) {
+            await movePieceTo(row, col, pieceId)
+            finishTurn(
+                moveMakes3InARow(row, col, activePlayer, lastRow, lastCol)
             )
         }
     }
 
-    destroyPiece(pieceId) {
-        const { row, col } = this.findLocationWithPiece(pieceId)
-        this.setSpotState(row, col, 0)
+    function destroyPiece(pieceId) {
+        const { row, col } = findLocationWithPiece(pieceId)
+        setSpotState(row, col, 0)
     }
 
-    pieceDragged(id, mouseX, mouseY) {
-        const { row, col } = this.getSpotRowColForXY(
-            mouseX + this.state.spotSize / 2,
-            mouseY + this.state.spotSize / 2
+    function pieceDragged(boardMetrics, mouseX, mouseY) {
+        const { row, col } = getSpotRowColForXY(
+            boardMetrics,
+            mouseX + boardMetrics.spotSize / 2,
+            mouseY + boardMetrics.spotSize / 2
         )
 
-        if (
-            row !== this.state.selectedBoardPos.row ||
-            col !== this.state.selectedBoardPos.col
-        ) {
-            this.setState({
+        if (row !== selectedBoardPos.row || col !== selectedBoardPos.col) {
+            setState({
                 selectedBoardPos: {
                     row,
                     col,
@@ -570,10 +406,10 @@ class Board extends React.Component {
         }
     }
 
-    findLocationWithPiece(pieceId) {
+    function findLocationWithPiece(pieceId) {
         return Object.values(sections)
             .map(sectionName => {
-                const sectionState = this.state.boardState[sectionName]
+                const sectionState = boardState[sectionName]
                 const resultKey = Object.keys(sectionState).find(
                     key => sectionState[key] === pieceId
                 )
@@ -581,77 +417,70 @@ class Board extends React.Component {
                 return resultKey !== undefined
                     ? {
                           section: sectionName,
-                          row: this.coordsFromKey(resultKey)[0],
-                          col: this.coordsFromKey(resultKey)[1],
+                          row: coordsFromKey(resultKey)[0],
+                          col: coordsFromKey(resultKey)[1],
                       }
                     : null
             })
             .find(result => result !== null)
     }
 
-    getLegalMoves(player, lastRow = -1, lastCol = -1) {
-        return Object.keys(this.state.boardState.main)
-            .map(key => this.coordsFromKey(key))
+    function getLegalMoves(player, lastRow = -1, lastCol = -1) {
+        return Object.keys(boardState.main)
+            .map(key => coordsFromKey(key))
             .filter(coords => {
                 const [row, col] = coords
-                return this.isMoveLegal(row, col, player, lastRow, lastCol)
+                return isMoveLegal(row, col, player, lastRow, lastCol)
             })
     }
 
-    isMoveLegal(row, col, player, lastRow, lastCol) {
-        const pieceId = this.getSpotState(row, col)
+    function isMoveLegal(row, col, player, lastRow, lastCol) {
+        const pieceId = getSpotState(row, col)
         const spotIsOccupied = pieceId !== 0
 
-        if (this.state.gameState === gameStates.DROP) {
-            const makes3InARow = this.moveMakes3InARow(row, col, player)
+        if (gameState === gameStates.DROP) {
+            const makes3InARow = moveMakes3InARow(row, col, player)
 
             return !spotIsOccupied && !makes3InARow
-        } else if (this.state.gameState === gameStates.MOVE) {
-            return (
-                !spotIsOccupied && this.areNeighbors(lastRow, lastCol, row, col)
-            )
-        } else if (this.state.gameState === gameStates.DESTROY) {
-            return !this.pieceBelongsToActivePlayer(pieceId) && spotIsOccupied
+        } else if (gameState === gameStates.MOVE) {
+            return !spotIsOccupied && areNeighbors(lastRow, lastCol, row, col)
+        } else if (gameState === gameStates.DESTROY) {
+            return !pieceBelongsToActivePlayer(pieceId) && spotIsOccupied
         }
     }
 
-    scoreCandidateMove(row, col, player, lastRow, lastCol) {
-        if (this.state.gameState === gameStates.DROP) {
+    function scoreCandidateMove(row, col, player, lastRow, lastCol) {
+        if (gameState === gameStates.DROP) {
             return 1
-        } else if (this.state.gameState === gameStates.MOVE) {
-            return this.moveMakes3InARow(row, col, player, lastRow, lastCol)
-                ? 1
-                : 0
-        } else if (this.state.gameState === gameStates.DESTROY) {
+        } else if (gameState === gameStates.MOVE) {
+            return moveMakes3InARow(row, col, player, lastRow, lastCol) ? 1 : 0
+        } else if (gameState === gameStates.DESTROY) {
             return 1
         } else {
             return -5
         }
     }
 
-    moveMakes3InARow(row, col, player, lastRow, lastCol) {
+    function moveMakes3InARow(row, col, player, lastRow, lastCol) {
         const pieceAlreadyOnBoard = lastRow !== undefined
         const pieceId = pieceAlreadyOnBoard
-            ? this.state.boardState.main[this.coordsToKey(lastRow, lastCol)]
+            ? boardState.main[coordsToKey(lastRow, lastCol)]
             : -1
 
         // clear piece from its previous location
         if (pieceAlreadyOnBoard)
-            this.state.boardState.main[this.coordsToKey(lastRow, lastCol)] = -1
+            boardState.main[coordsToKey(lastRow, lastCol)] = -1
 
         const chainLengths = [
             directions.UP,
             directions.DOWN,
             directions.LEFT,
             directions.RIGHT,
-        ].map(direction =>
-            this.chainLengthInDirection(player, row, col, direction)
-        )
+        ].map(direction => chainLengthInDirection(player, row, col, direction))
 
         // restore piece to its previous location
         if (pieceAlreadyOnBoard)
-            this.state.boardState.main[this.coordsToKey(lastRow, lastCol)] =
-                pieceId
+            boardState.main[coordsToKey(lastRow, lastCol)] = pieceId
 
         if (
             chainLengths[0] + chainLengths[1] > 1 ||
@@ -663,7 +492,7 @@ class Board extends React.Component {
         }
     }
 
-    chainLengthInDirection(player, originRow, originCol, direction) {
+    function chainLengthInDirection(player, originRow, originCol, direction) {
         let count = 0
         let neighbor
         let stillGoing = true
@@ -671,8 +500,8 @@ class Board extends React.Component {
         let nextCol = originCol
 
         do {
-            neighbor = this.getNeighbor(nextRow, nextCol, direction)
-            stillGoing = this.pieceOwner(neighbor.state) === player
+            neighbor = getNeighbor(nextRow, nextCol, direction)
+            stillGoing = getPieceOwner(neighbor.state) === player
 
             if (stillGoing) {
                 count++
@@ -684,7 +513,7 @@ class Board extends React.Component {
         return count
     }
 
-    getNeighbor(row, col, direction) {
+    function getNeighbor(row, col, direction) {
         const rowAdder =
             direction === directions.UP
                 ? -1
@@ -703,26 +532,25 @@ class Board extends React.Component {
         return {
             row: neighborRow,
             col: neighborCol,
-            state: this.getSpotState(neighborRow, neighborCol),
+            state: getSpotState(neighborRow, neighborCol),
         }
     }
 
-    areNeighbors(row1, col1, row2, col2) {
+    function areNeighbors(row1, col1, row2, col2) {
         return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1
     }
 
-    getSpotState(row, col, section = sections.MAIN) {
-        return this.state.boardState[section][row + "," + col]
+    function getSpotState(row, col, section = sections.MAIN) {
+        return boardState[section][row + "," + col]
     }
 
-    async setSpotState(
+    async function setSpotState(
         row,
         col,
         spotState,
         section = sections.MAIN,
         defer = false, // i.e. don't actually update the state right now
-        boardState = this.state.boardState,
-        callback = () => {}
+        boardState = boardState
     ) {
         const sectionState = boardState[section]
         const newBoardState = {
@@ -736,32 +564,29 @@ class Board extends React.Component {
         if (defer) {
             return newBoardState
         } else {
-            await this.pSetState(
-                {
-                    boardState: newBoardState,
-                },
-                callback
-            )
+            setState({
+                boardState: newBoardState,
+            })
         }
     }
 
-    renderPieces() {
+    function renderPieces() {
         const pieces = {}
 
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                const id = this.getSpotState(i, j, sections.MAIN)
-                pieces[id] = this.renderPieceAtSlot(i, j, sections.MAIN)
+                const id = getSpotState(i, j, sections.MAIN)
+                pieces[id] = renderPieceAtSlot(i, j, sections.MAIN)
             }
         }
 
         for (let i = 0; i < 6; i++) {
             for (let j = 0; j < 2; j++) {
-                const leftId = this.getSpotState(i, j, sections.LEFT)
-                const rightId = this.getSpotState(i, j, sections.RIGHT)
+                const leftId = getSpotState(i, j, sections.LEFT)
+                const rightId = getSpotState(i, j, sections.RIGHT)
 
-                pieces[leftId] = this.renderPieceAtSlot(i, j, sections.LEFT)
-                pieces[rightId] = this.renderPieceAtSlot(i, j, sections.RIGHT)
+                pieces[leftId] = renderPieceAtSlot(i, j, sections.LEFT)
+                pieces[rightId] = renderPieceAtSlot(i, j, sections.RIGHT)
             }
         }
 
@@ -779,12 +604,12 @@ class Board extends React.Component {
         return copy.map(key => pieces[key])
     }
 
-    renderSpots() {
+    function renderSpots() {
         const spots = []
         for (let i = 0; i < 5; i++) {
             for (let j = 0; j < 6; j++) {
-                const { x, y } = this.getSpotPos(i, j, sections.MAIN)
-                const margin = this.state.spotSize * 0.15
+                const { x, y } = getSpotPos(boardMetrics, i, j, sections.MAIN)
+                const margin = boardMetrics.spotSize * 0.15
                 const transformString = `translate(${x + margin / 2}px, ${
                     y + margin / 2
                 }px)`
@@ -793,29 +618,27 @@ class Board extends React.Component {
                 let filterStr = ""
                 let border = "none"
 
-                if (this.state.pickedUpPiece) {
-                    const location = this.findLocationWithPiece(
-                        this.state.pickedUpPiece
-                    )
-                    const legal = this.isMoveLegal(
+                if (pickedUpPiece) {
+                    const location = findLocationWithPiece(pickedUpPiece)
+                    const legal = isMoveLegal(
                         i,
                         j,
-                        this.state.activePlayer,
+                        activePlayer,
                         location.row,
                         location.col
                     )
 
                     if (
-                        i === this.state.selectedBoardPos.row &&
-                        j === this.state.selectedBoardPos.col
+                        i === selectedBoardPos.row &&
+                        j === selectedBoardPos.col
                     ) {
-                        filterStr = this.state.effects
+                        filterStr = effects
                             ? `drop-shadow(0px 0px 0.75rem ${
                                   legal ? "#0f9" : "#f01"
                               })`
                             : ""
                         bgColor = "#4e504e"
-                    } else if (this.getSpotState(i, j) === 0) {
+                    } else if (getSpotState(i, j) === 0) {
                         if (legal) {
                             border = "1px solid #258542"
                         } else {
@@ -831,8 +654,8 @@ class Board extends React.Component {
                         style={{
                             backgroundColor: bgColor,
                             transform: transformString,
-                            width: this.state.spotSize - margin,
-                            height: this.state.spotSize - margin,
+                            width: boardMetrics.spotSize - margin,
+                            height: boardMetrics.spotSize - margin,
                             filter: filterStr,
                             display: "flex",
                             justifyContent: "center",
@@ -849,7 +672,7 @@ class Board extends React.Component {
                                     zIndex: 12,
                                 }}
                             >
-                                {this.getSpotState(i, j)}
+                                {getSpotState(i, j)}
                             </span>
                         )}
                     </div>
@@ -860,16 +683,16 @@ class Board extends React.Component {
         return spots
     }
 
-    renderPieceAtSlot(row, col, section) {
-        let spotState = this.getSpotState(row, col, section)
+    function renderPieceAtSlot(row, col, section) {
+        let spotState = getSpotState(row, col, section)
 
         if (spotState === 0) return null
         else {
             const id = spotState
-            const pos = this.getSpotPos(row, col, section)
+            const pos = getSpotPos(boardMetrics, row, col, section)
 
-            const pieceMargin = this.state.spotSize * 0.25
-            const pieceSize = this.state.spotSize - pieceMargin
+            const pieceMargin = boardMetrics.spotSize * 0.25
+            const pieceSize = boardMetrics.spotSize - pieceMargin
 
             pos.x += pieceMargin / 2
             pos.y += pieceMargin / 2
@@ -878,33 +701,35 @@ class Board extends React.Component {
                 <Piece
                     key={id}
                     id={id}
-                    gameState={this.state.gameState}
+                    gameState={gameState}
                     pos={pos}
                     size={pieceSize}
                     x
-                    boardPos={this.state.boardBounds}
-                    pieceDroppedFunc={this.pieceDropped.bind(this)}
-                    piecePickedUpFunc={this.piecePickedUp.bind(this)}
-                    pieceDraggedFunc={this.pieceDragged.bind(this)}
-                    pieceCanBeLifted={this.pieceCanBeLifted.bind(this)}
+                    boardPos={{ x: boardMetrics.x, y: boardMetrics.y }}
+                    pieceDroppedFunc={pieceDropped}
+                    piecePickedUpFunc={piecePickedUp}
+                    pieceDraggedFunc={(mouseX, mouseY) => {
+                        pieceDragged(boardMetrics, mouseX, mouseY)
+                    }}
+                    pieceCanBeLifted={pieceCanBeLifted}
                     destroyPiece={pieceId => {
-                        this.destroyPiece(pieceId)
-                        this.finishTurn()
+                        destroyPiece(pieceId)
+                        finishTurn()
                     }}
                     destroyable={
-                        this.state.gameState === gameStates.DESTROY &&
-                        !this.pieceBelongsToActivePlayer(id)
+                        gameState === gameStates.DESTROY &&
+                        !pieceBelongsToActivePlayer(id)
                     }
                     hidden={
-                        this.state.gameState === gameStates.DESTROY &&
-                        this.pieceBelongsToActivePlayer(id)
+                        gameState === gameStates.DESTROY &&
+                        pieceBelongsToActivePlayer(id)
                     }
                     drawAIHand={
-                        this.state.aiSelection.row === row &&
-                        this.state.aiSelection.col === col &&
-                        (this.state.gameState === gameStates.DROP ||
-                            this.state.gameState === gameStates.MOVE) &&
-                        this.state.aiMakingMove &&
+                        aiSelection.row === row &&
+                        aiSelection.col === col &&
+                        (gameState === gameStates.DROP ||
+                            gameState === gameStates.MOVE) &&
+                        aiMakingMove &&
                         section === sections.MAIN // This is going to be an issue for showing the AI hand over side pieces before moving
                     }
                 />
@@ -912,96 +737,157 @@ class Board extends React.Component {
         }
     }
 
-    pieceCanBeLifted(id) {
-        if (this.state.gameState === gameStates.DROP) {
-            return (
-                this.pieceBelongsToActivePlayer(id) &&
-                !this.pieceIsOnMainSection(id)
-            )
-        } else if (this.state.gameState === gameStates.MOVE) {
-            return this.pieceBelongsToActivePlayer(id)
+    function pieceCanBeLifted(id) {
+        if (gameState === gameStates.DROP) {
+            return pieceBelongsToActivePlayer(id) && !pieceIsOnMainSection(id)
+        } else if (gameState === gameStates.MOVE) {
+            return pieceBelongsToActivePlayer(id)
         }
     }
 
-    pieceBelongsToActivePlayer(pieceId) {
-        return this.pieceOwner(pieceId) === this.state.activePlayer
+    function pieceBelongsToActivePlayer(pieceId) {
+        return getPieceOwner(pieceId) === activePlayer
     }
 
-    pieceOwner(pieceId) {
-        if (pieceId > 0 && pieceId < 13) return players.P1
-        else if (pieceId > 12) return players.P2
+    function pieceIsOnMainSection(id) {
+        return Object.values(boardState.main).includes(id)
     }
 
-    pieceIsOnMainSection(id) {
-        return Object.values(this.state.boardState.main).includes(id)
+    return (
+        <>
+            {destroyMode && (
+                <Crosshair
+                    aiMakingMove={aiMakingMove}
+                    aiSelection={aiSelection}
+                />
+            )}
+            <Cannon hPos="left" vPos="top" deployed={destroyMode} />
+            <Cannon hPos="right" vPos="top" deployed={destroyMode} />
+            <Cannon hPos="right" vPos="bottom" deployed={destroyMode} />
+            <Cannon hPos="left" vPos="bottom" deployed={destroyMode} />
+            <div
+                ref={boardRef}
+                id="board"
+                className="no-select"
+                style={{
+                    width: boardMetrics.width + "px",
+                    height: boardMetrics.height + "px",
+                }}
+            >
+                {!isEmpty(errorMessage) && (
+                    <div className="error-message">{errorMessage}</div>
+                )}
+                <Announcer
+                    text={announcement}
+                    xPos={announcementXPos}
+                    swipeOut={announcement === messages.gameStart}
+                />{" "}
+                <div className="player-text-container">
+                    <PlayerText
+                        text={"Player 1"}
+                        isPlayer1
+                        highlight={activePlayer === players.P1}
+                        setUseAI={useAI => handleAIToggle(useAI, players.P1)}
+                    />
+                    <PlayerText
+                        text={"Player 2"}
+                        highlight={activePlayer === players.P2}
+                        boardRightX={boardMetrics.x + boardMetrics.width}
+                        setUseAI={useAI => handleAIToggle(useAI, players.P2)}
+                    />
+                </div>
+                {renderPieces().concat(renderSpots())}
+            </div>
+        </>
+    )
+}
+
+function getPieceOwner(pieceId) {
+    if (pieceId > 0 && pieceId < 13) return players.P1
+    else if (pieceId > 12) return players.P2
+}
+
+function coordsFromKey(key) {
+    return key.split(",").map(s => Number(s))
+}
+
+function coordsToKey(row, col) {
+    return row + "," + col
+}
+
+function getBoardDimensions() {
+    const app = document.getElementById("app")
+
+    // (vertical_pieces / horizontal_pieces) - 2.5% of width gap size between center and each side area
+    const aspectRatio = 6 / (6 + 4) - 0.05
+
+    let width = app.offsetWidth * 0.85
+    let noGapWidth = app.offsetWidth * 0.8
+    let height = width * aspectRatio
+
+    if (height > app.offsetHeight * 0.6) {
+        height = app.offsetHeight * 0.6
+        width = height / aspectRatio
+        noGapWidth = height / (aspectRatio + 0.05)
     }
 
-    getSpotPos(row, col, section) {
-        switch (section) {
-            case sections.MAIN:
-                return this.getMainSpotPos(row, col)
-            case sections.LEFT:
-                return this.getSideSpotPos(true, row, col)
-            case sections.RIGHT:
-                return this.getSideSpotPos(false, row, col)
-            default:
-                throw "unknown section: " + section
-        }
+    const gap = (width - noGapWidth) / 2
+
+    const centerStartX = noGapWidth * (2 / 10) + gap
+    const centerEndX = centerStartX + noGapWidth * (6 / 10)
+
+    return {
+        width,
+        height,
+        centerStartX,
+        centerEndX,
+        centerGap: gap,
     }
+}
 
-    getMainSpotPos(row, col) {
-        const spotSize = this.state.spotSize
-        const x = this.state.centerStartX
-        const y = this.state.spotSize / 2
-
-        return {
-            x: x + col * spotSize,
-            y: y + row * spotSize,
-        }
+function getSpotPos(boardMetrics, row, col, section) {
+    switch (section) {
+        case sections.MAIN:
+            return getMainSpotPos(boardMetrics, row, col)
+        case sections.LEFT:
+            return getSideSpotPos(boardMetrics, true, row, col)
+        case sections.RIGHT:
+            return getSideSpotPos(boardMetrics, false, row, col)
+        default:
+            throw "unknown section: " + section
     }
+}
 
-    getSideSpotPos(leftSide, row, col) {
-        const spotSize = this.state.spotSize
-        const x = leftSide ? 0 : this.state.centerEndX + this.state.centerGap
-        const y = 0
+function getMainSpotPos(boardMetrics, row, col) {
+    const x = boardMetrics.centerStartX
+    const y = boardMetrics.spotSize / 2
 
-        return {
-            x: x + col * spotSize,
-            y: y + row * spotSize,
-        }
+    return {
+        x: x + col * boardMetrics.spotSize,
+        y: y + row * boardMetrics.spotSize,
     }
+}
 
-    getSpotRowColForXY(x, y) {
-        const spotSize = this.state.spotSize
+function getSideSpotPos(boardMetrics, leftSide, row, col) {
+    const x = leftSide ? 0 : boardMetrics.centerEndX + boardMetrics.centerGap
+    const y = 0
 
-        x -= this.state.centerStartX
-        y -= spotSize / 2
-
-        const col = Math.floor(x / spotSize)
-        const row = Math.floor(y / spotSize)
-
-        return {
-            row,
-            col,
-        }
+    return {
+        x: x + col * boardMetrics.spotSize,
+        y: y + row * boardMetrics.spotSize,
     }
+}
 
-    getEmptyBoard() {
-        const board = { main: {}, lSide: {}, rSide: {} }
-        for (let i = 0; i < 5; i++) {
-            for (let j = 0; j < 6; j++) {
-                board.main[i + "," + j] = 0
-            }
-        }
+function getSpotRowColForXY(boardMetrics, x, y) {
+    x -= boardMetrics.centerStartX
+    y -= boardMetrics.spotSize / 2
 
-        for (let i = 0; i < 6; i++) {
-            for (let j = 0; j < 2; j++) {
-                board.lSide[i + "," + j] = 1 + i * 2 + j
-                board.rSide[i + "," + j] = 24 - (i * 2 + j)
-            }
-        }
+    const col = Math.floor(x / boardMetrics.spotSize)
+    const row = Math.floor(y / boardMetrics.spotSize)
 
-        return board
+    return {
+        row,
+        col,
     }
 }
 

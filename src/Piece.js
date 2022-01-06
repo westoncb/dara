@@ -47,7 +47,7 @@ const Piece = React.memo(function Piece({
             element.style.setProperty("--translate-x", x + "px")
             element.style.setProperty("--translate-y", y + "px")
 
-            pieceDraggedFunc(id, x, y)
+            pieceDraggedFunc(x, y)
         }
     }
 

@@ -6,7 +6,7 @@
     "scripts": {
         "dev": "webpack-dev-server --mode development",
         "build": "webpack --mode production",
-        "deploy": "sudo rsync -e 'ssh -i /Users/westonbeecroft/.aws/thedefault.pem' ./dist/main.bundle.js ec2-user@symbolflux.com:~/newveraug21/personalpage/public/dara/main.bundle.js -v",
+        "deploy": "sudo rsync -e 'ssh -i /Users/westonbeecroft/.aws/thedefault.pem' ./dist/* ec2-user@symbolflux.com:~/newveraug21/personalpage/public/dara/ -v",
         "bd": "yarn build && yarn deploy"
     },
     "repository": {

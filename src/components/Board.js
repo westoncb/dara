@@ -55,6 +55,7 @@ function Board({}) {
     } = useStore()
 
     const boardRef = useRef(null)
+    const overlayRef = useRef(null)
 
     const announcementXPos = !isNil(boardRef.current)
         ? boardRef.current.offsetWidth / 2
@@ -63,9 +64,14 @@ function Board({}) {
 
     useEffect(generalInit, [])
     useEffect(() => setUpResizeBehavior(boardRef), [boardRef.current])
+    useEffect(
+        () => setState({ overlayElement: overlayRef.current }),
+        [overlayRef.current]
+    )
 
     return (
         <>
+            <canvas className="overlay-canvas" ref={overlayRef} />
             {destroyMode && (
                 <Crosshair
                     aiMakingMove={aiMakingMove}

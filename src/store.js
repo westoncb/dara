@@ -12,6 +12,7 @@ const useStore = create((set, get) => {
         boardState: getEmptyBoard(),
         effects: true,
         announcement: "",
+        overlayElement: null,
         boardMetrics: {
             x: 1,
             y: 1,

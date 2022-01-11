@@ -56,77 +56,9 @@ function Board({}) {
     const destroyMode = gameState === gameStates.DESTROY
 
     // general initialization
-    useEffect(() => {
-        // modify console.error to show message in-component
-        // const oldErrorFunc = console.error
-        // console.error = (...args) => {
-        //     oldErrorFunc(args)
-        //     const message = args.reduce((accum, next) => {
-        //         return accum + next
-        //     })
-        //     setState({ errorMessage: message })
-        // }
+    useEffect(generalInit, [])
 
-        const trackMousePos = e => {
-            mousePos.x = e.clientX
-            mousePos.y = e.clientY
-        }
-        window.addEventListener("mousemove", trackMousePos)
-
-        // dispay opening messages
-        setState({
-            announcement: messages.gameStart,
-        })
-        setTimeout(() => {
-            setState({
-                announcement: messages.dropPhase,
-            })
-        }, 1750)
-
-        return () => window.removeEventListener("mousemove", trackMousePos)
-    }, [])
-
-    // set up resize behavior
-    useEffect(() => {
-        if (isNil(boardRef.current)) {
-            return
-        }
-
-        const onResize = () => {
-            const { width, height, centerStartX, centerEndX, centerGap } =
-                getBoardDimensions()
-
-            const bcRect = boardRef.current.getBoundingClientRect()
-
-            setState({
-                boardMetrics: {
-                    x: bcRect.x,
-                    y: bcRect.y,
-                    width,
-                    height,
-                    centerStartX,
-                    centerEndX,
-                    centerGap,
-                    spotSize: height / 6,
-                },
-            })
-        }
-
-        const debouncedResize = debounce(onResize, 60)
-        window.addEventListener("resize", debouncedResize)
-        window.addEventListener("deviceorientation", debouncedResize, true)
-
-        onResize()
-
-        return () => {
-            window.removeEventListener(
-                "deviceorientation",
-                debouncedResize,
-                true
-            )
-            window.removeEventListener("resize", debouncedResize)
-        }
-    }, [boardRef.current])
+    useEffect(() => setUpResizeBehavior(boardRef), [boardRef.current])
 
     return (
         <>
@@ -183,6 +115,36 @@ function Board({}) {
             </div>
         </>
     )
+}
+
+function generalInit() {
+    // modify console.error to show message in-component
+    // const oldErrorFunc = console.error
+    // console.error = (...args) => {
+    //     oldErrorFunc(args)
+    //     const message = args.reduce((accum, next) => {
+    //         return accum + next
+    //     })
+    //     setState({ errorMessage: message })
+    // }
+
+    const trackMousePos = e => {
+        mousePos.x = e.clientX
+        mousePos.y = e.clientY
+    }
+    window.addEventListener("mousemove", trackMousePos)
+
+    // dispay opening messages
+    setState({
+        announcement: messages.gameStart,
+    })
+    setTimeout(() => {
+        setState({
+            announcement: messages.dropPhase,
+        })
+    }, 1750)
+
+    return () => window.removeEventListener("mousemove", trackMousePos)
 }
 
 function renderPieces(gameState, aiMakingMove, aiSelection) {
@@ -665,6 +627,43 @@ function getSpotRowColForXY(boardMetrics, x, y) {
     return {
         row,
         col,
+    }
+}
+
+function setUpResizeBehavior(boardRef) {
+    if (isNil(boardRef.current)) {
+        return
+    }
+
+    const onResize = () => {
+        const { width, height, centerStartX, centerEndX, centerGap } =
+            getBoardDimensions()
+
+        const bcRect = boardRef.current.getBoundingClientRect()
+
+        setState({
+            boardMetrics: {
+                x: bcRect.x,
+                y: bcRect.y,
+                width,
+                height,
+                centerStartX,
+                centerEndX,
+                centerGap,
+                spotSize: height / 6,
+            },
+        })
+    }
+
+    const debouncedResize = debounce(onResize, 60)
+    window.addEventListener("resize", debouncedResize)
+    window.addEventListener("deviceorientation", debouncedResize, true)
+
+    onResize()
+
+    return () => {
+        window.removeEventListener("deviceorientation", debouncedResize, true)
+        window.removeEventListener("resize", debouncedResize)
     }
 }
 

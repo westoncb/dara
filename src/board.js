@@ -55,9 +55,7 @@ function Board({}) {
         : 0
     const destroyMode = gameState === gameStates.DESTROY
 
-    // general initialization
     useEffect(generalInit, [])
-
     useEffect(() => setUpResizeBehavior(boardRef), [boardRef.current])
 
     return (
@@ -413,13 +411,13 @@ function finishTurn(made3InARow = false) {
         })
     }
 
-    handleStateTransition(gameState, nextGameState)
-
     setState({
         gameState: nextGameState,
         announcement,
         aiMakingMove: false,
     })
+
+    handleStateTransition(gameState, nextGameState)
 
     if (isAI(nextPlayer)) {
         aiTurnWithDuration()

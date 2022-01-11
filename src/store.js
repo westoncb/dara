@@ -13,6 +13,24 @@ const useStore = create((set, get) => {
         effects: true,
         announcement: "",
         overlayElement: null,
+        timedStates: { laserShot: { startTime: -1, endTime: -1 } },
+        enterTimedState: (name, duration) => {
+            get().timedStates[name] = {
+                startTime: performance.now(),
+                endTime: performance.now() + duration,
+            }
+        },
+        getTimedStateProgress: name => {
+            const { startTime, endTime } = get().timedStates[name]
+            const totalTime = endTime - startTime
+            if (totalTime > 0) {
+                const progress = 1 - (endTime - performance.now()) / totalTime
+                if (progress >= 0 && progress <= 1) return progress
+                else return -1
+            } else {
+                return -1
+            }
+        },
         boardMetrics: {
             x: 1,
             y: 1,
@@ -30,8 +48,8 @@ const useStore = create((set, get) => {
             row: -1,
             col: -1,
         },
-        p1AI: false,
-        p2AI: false,
+        p1AI: true,
+        p2AI: true,
         aiMakingMove: false,
         aiSelection: { row: -1, col: -1 },
         errorMessage: null,

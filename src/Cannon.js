@@ -6,12 +6,12 @@ import isNil from "lodash.isnil"
 
 function Cannon({ hPos, vPos, deployed }) {
     const initialPosition = {
-        [hPos]: "0px",
-        [vPos]: vPos === "top" ? "-138px" : "-101px",
+        [hPos]: "-117px",
+        [vPos]: "-138px",
     }
     const deployedPosition = {
-        [hPos]: "-50px",
-        [vPos]: vPos === "top" ? "-20px" : "-10px",
+        [hPos]: "-29px",
+        [vPos]: "-34px",
     }
 
     const cornerPos = {
@@ -56,10 +56,15 @@ function Cannon({ hPos, vPos, deployed }) {
     }, [cannonRef.current, deployed])
 
     return (
-        <div className="cannon-container" style={style}>
-            <img className="cannon-base" src={cannonBase} />
-            <img ref={cannonRef} className="cannon" src={cannon} />
-        </div>
+        <>
+            <img className="cannon-base" style={style} src={cannonBase} />
+            <img
+                ref={cannonRef}
+                className="cannon"
+                style={style}
+                src={cannon}
+            />
+        </>
     )
 }
 

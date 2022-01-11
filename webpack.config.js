@@ -50,9 +50,9 @@ module.exports = {
         }),
     ],
     devServer: {
-        static: "./dist",
         liveReload: true,
         watchFiles: __dirname + "/src",
         open: true,
+        hot: false,
     },
 }

@@ -48,11 +48,11 @@ module.exports = {
             file: "index.html",
             inject: "body",
         }),
-        new webpack.HotModuleReplacementPlugin(),
     ],
     devServer: {
-        contentBase: "./dist",
+        static: "./dist",
+        liveReload: true,
+        watchFiles: __dirname + "/src",
         open: true,
-        hot: true,
     },
 }

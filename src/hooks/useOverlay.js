@@ -14,13 +14,16 @@ function useOverlay() {
 
         const ctx = overlayElement.getContext("2d")
         const loop = time => {
-            ctx.clearRect(0, 0, overlayElement.width, overlayElement.height)
+            const subscribersArray = Object.values(subscribers.current)
+            if (subscribersArray.length > 0) {
+                ctx.clearRect(0, 0, overlayElement.width, overlayElement.height)
+            }
 
             const delta = time - lastFrameTime
             const deltaSeconds = delta / 1000
             lastFrameTime = time
 
-            Object.values(subscribers.current).forEach(s => {
+            subscribersArray.forEach(s => {
                 s(ctx, deltaSeconds)
             })
             window.requestAnimationFrame(loop)

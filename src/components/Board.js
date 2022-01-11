@@ -1,6 +1,12 @@
 import React, { useRef, useEffect } from "react"
-import { useStore, setState, getState } from "./store"
-import { mousePos, gameStates, sections, players, messages } from "./global"
+import { useStore, setState, getState } from "../store"
+import {
+    mousePos,
+    gameStates,
+    sections,
+    players,
+    messages,
+} from "../lib/global"
 import isEmpty from "lodash.isempty"
 import isNil from "lodash.isnil"
 import debounce from "lodash.debounce"
@@ -17,11 +23,11 @@ import {
     moveMakes3InARow,
     allSidePiecesPlayed,
     pieceBelongsToActivePlayer,
-} from "./boardQueries"
-import { generateAIMove } from "./ai"
+} from "../lib/boardQueries"
+import { generateAIMove } from "../lib/ai"
 
 const showDebugState = false
-const fastForwardAI = false
+const fastForwardAI = true
 
 const AI_MOVE_DELAY = gameState =>
     gameState === gameStates.DROP && fastForwardAI ? 40 : 1200

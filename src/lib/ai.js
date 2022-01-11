@@ -7,7 +7,7 @@ import {
     moveMakes3InARow,
     readBoard,
 } from "./boardQueries"
-import { getState } from "./store"
+import { getState } from "../store"
 import isEmpty from "lodash.isempty"
 
 export function generateAIMove(activePlayer, gameState) {

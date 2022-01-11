@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React from "react"
 
 function PlayerText({ text, highlight, isPlayer1, setUseAI }) {
     return (

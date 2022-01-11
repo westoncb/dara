@@ -1,5 +1,5 @@
 import create from "zustand"
-import { gameStates, players } from "./global"
+import { gameStates, players } from "./lib/global"
 
 let setState
 let getState

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react"
-import { mousePos } from "./global"
+import { mousePos } from "../lib/global"
 import isNil from "lodash.isnil"
-import crosshair from "../assets/crosshair.png"
+import crosshair from "../../assets/crosshair.png"
 
 function Crosshair() {
     const crosshairRef = useRef()

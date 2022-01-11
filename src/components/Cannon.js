@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react"
-import cannon from "../assets/cannon.png"
-import cannonBase from "../assets/cannon-base.png"
-import { mousePos } from "./global"
+import cannon from "../../assets/cannon.png"
+import cannonBase from "../../assets/cannon-base.png"
+import { mousePos } from "../lib/global"
 import isNil from "lodash.isnil"
 
 function Cannon({ hPos, vPos, deployed }) {

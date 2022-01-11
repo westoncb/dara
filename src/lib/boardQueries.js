@@ -1,4 +1,4 @@
-import { getState } from "./store"
+import { getState } from "../store"
 import { gameStates, sections, players, directions } from "./global"
 
 export function findLocationWithPiece(pieceId) {

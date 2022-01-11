@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import isNil from "lodash.isnil"
-import hand from "../assets/hand2.png"
-import { gameStates } from "./global"
+import hand from "../../assets/hand2.png"
+import { gameStates } from "../lib/global"
 
 const highlightPlayablePieces = false
 
